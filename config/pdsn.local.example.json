@@ -1,0 +1,19 @@
+{
+  "a10_bearer": {
+    "mode": "raw_gre",
+    "udp_bind_addr": null,
+    "udp_peer_addr": null
+  },
+  "a11": {
+    "bind_addr": "172.31.0.1:699",
+    "peer_addr": "0.0.0.0:0",
+    "framing": "bare"
+  },
+  "a11_security": {
+    "spi": 256,
+    "shared_secret_hex": "${A11_SHARED_SECRET_HEX}"
+  },
+  "a12": {
+    "radius_secret": "${A12_RADIUS_SECRET}"
+  }
+}

@@ -1,0 +1,29 @@
+# Real site configs and secrets never get committed.
+config/*.local.json
+!config/*.local.example.json
+*.local.json
+!*.local.example.json
+.env
+.env.*
+!.env.example
+secrets/
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.der
+
+# Captures and logs can contain IMSI/MEID and credentials
+*.pcap
+*.pcapng
+logs/
+*.log
+run/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

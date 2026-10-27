@@ -1,0 +1,37 @@
+{
+  "term_auth_psk": "${A12_RADIUS_SECRET}",
+  "sites": {
+    "home": {
+      "feid": "${FEMTO_FEID}",
+      "profile": "airave-25-2x",
+      "name": "Home femtocell",
+      "cell": {
+        "mcc": "310",
+        "imsi_11_12": "00",
+        "cell_id": 403,
+        "sector": 0
+      },
+      "1x": {
+        "enabled": false,
+        "sid": 22,
+        "nid": 65535,
+        "band_class": 1,
+        "channel": 50,
+        "pn_offset": 0,
+        "max_sector_power_dbm": -30
+      },
+      "evdo": { "enabled": false },
+      "acs": {
+        "username": "${FEMTO_ACS_USERNAME}",
+        "password": "${FEMTO_ACS_PASSWORD}"
+      },
+      "sip": { "password": "${FEMTO_SIP_PASSWORD}" },
+      "segw": {
+        "security_profile": "legacy",
+        "ike_group_key": "${FEMTO_IKE_GROUP_KEY}",
+        "eap_identity": "${FEMTO_EAP_IDENTITY}",
+        "eap_password": "${FEMTO_EAP_PASSWORD}"
+      }
+    }
+  }
+}

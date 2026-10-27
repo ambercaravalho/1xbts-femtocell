@@ -1,0 +1,9 @@
+{
+  "base_stations": [
+    {
+      "id": "femto-fcs-1",
+      "management_endpoint": "http://127.0.0.1:17024"
+    }
+  ],
+  "voice": { "voice_bearer_bind_ip": "172.31.0.1" }
+}

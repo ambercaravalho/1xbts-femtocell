@@ -115,8 +115,31 @@ Read the result:
 | `received unencrypted informational ... NOTIFY` right after our `AUTH` | the device rejected our PSK, so **`ike_group_key` is wrong** |
 | `EAP method EAP_MD5 succeeded` | group key right, EAP password right |
 
-On this unit the probe confirmed FEID = MAC and stopped at the group key (see findings).
-Leave the radio disabled for this test; the SeGW never sends configuration to the device.
+On this unit the probe confirmed FEID = MAC, validated the global IKE group key, and
+stopped at the per-device EAP-MD5 password (see findings). Leave the radio disabled for
+this test; the SeGW never sends configuration to the device.
+
+### 3.3.2 Where the Airave 2.5 (FC330A) credentials come from
+
+The device is a two-processor Airvana FC330A: a Broadcom BCM6358 host (router, web UI,
+DHCP) and an MPC8313 radio module that terminates the IPsec tunnel and runs the CDMA stack.
+A public writeup,
+["Sprint Airave 2.5 Femtocell Architecture & Reverse Engineering"](https://studylib.net/doc/28842349/airave-arch),
+documents how the secrets are stored and recovered.
+
+| Secret | 1xBTS field | Scope | How to get it |
+| --- | --- | --- | --- |
+| IKE group key | `segw.ike_group_key` | **global** Airave 2.5 constant | from the writeup; validated by the probe advancing to EAP |
+| EAP-MD5 password | `segw.eap_password` | **per-device** | read from the radio module's U-boot env / VPD (requires a shell or flash dump) |
+| ACS password | `acs.password` | shared constant | from the writeup |
+| ACS/operator username | `acs.username` | derived | `<OUI>-cdmaFAP-<MAC-without-colons>` |
+| SIP password | `sip.password` | unknown | not in the recovered set; TBD |
+
+Non-invasive reads that **don't** work on a stock unit: telnet/SSH are closed on the
+customer LAN unless `DEBUG_MODE=y` is set in the radio's U-boot env, and the host web UI
+(`admin`/`admin`) only shows the router, not the radio's keys. Getting the per-device EAP
+password therefore means opening the unit and either attaching a 3.3V UART to get a shell or
+dumping the flash to read the U-boot env, as the writeup did.
 
 ## 3.4 Radio-side facts to collect
 

@@ -75,7 +75,8 @@ logs either, since they can contain handset identities and credentials.
 - [x] Femtocell seen sending IKE to the VM (IKEv2, ~4.5 min after power-on)
 - [ ] Femtocell model and firmware identified
 - [x] FEID confirmed (= MAC) via SeGW identity probe
-- [ ] Device credentials obtained (blocked on IKE group key, then EAP, ACS, SIP)
+- [x] IKE group key validated (global Airave 2.5 constant)
+- [ ] Device credentials obtained (blocked on per-device EAP-MD5 password in the unit's flash)
 - [x] 1xBTS femto profile and `cdma-nib` build on ARM64
 - [ ] IPsec tunnel up
 - [ ] ACS provisioned, SIP registered

@@ -32,9 +32,12 @@ Fix / takeaway:
 | Boot to first IKE attempt | ~4.5 min | Confirmed |
 | IKE version | IKEv2 (`IKE_SA_INIT` to UDP 500) | Confirmed |
 | Model | Airvana FC330A (Sprint Airave 2.5) | Confirmed (LAN portal realm) |
-| LAN admin portal | http://192.168.17.1 (Basic auth, realm FC330A) | Confirmed |
+| LAN admin portal | http://192.168.17.1  admin / admin | Confirmed |
+| Host SoC / FW | Broadcom BCM6358, host FW family 2.5.x (per writeup) | Expected |
+| IKE group key | global Airave constant, validated on this unit | Confirmed |
+| EAP-MD5 password | per-device, not yet recovered | Blocker |
 | FCC ID | | |
-| Firmware (2.x / 5.x) | | |
+| Firmware (2.x / 5.x) | 2.x assumed (profile airave-25-2x; confirm via ACS once up) | Expected |
 | 1xBTS profile that works | | |
 | FEID equals Ethernet MAC? | | |
 | Bootstrap DNS names actually queried | | |
@@ -43,6 +46,40 @@ Fix / takeaway:
 | Credentials collected (yes/no per field, see docs/03 3.3) | | |
 
 ---
+
+### 2026-10-27: IKE group key validated (global); EAP password is per-device
+Status: Confirmed
+
+A public reverse-engineering writeup of the Airave 2.5 (Airvana FC330A),
+["Sprint Airave 2.5 Femtocell Architecture & Reverse Engineering"](https://studylib.net/doc/28842349/airave-arch),
+documents the legacy tunnel/provisioning secrets recovered from a unit's flash (radio
+module U-boot env on `mtdblock8`, and the VPD). Tested against our unit through the SeGW
+identity probe:
+
+- **`ike_group_key` is a GLOBAL firmware constant and it works on our unit.** With it set,
+  the femtocell **accepted our SeGW's PSK authentication** and advanced to EAP: the log goes
+  from the old "received unencrypted informational" rejection to
+  `parsed IKE_AUTH request 2 [ EAP/RES/MD5 ]`. That is the proof the group key is right.
+  (The value is a leetspeak constant; it's stored only in the VM's gitignored
+  `config/femto.local.json`, not in this repo.)
+- **`eap_password` (EAP-MD5) is per-device and unknown for our unit.** strongSwan reports
+  `EAP-MD5 verification failed` / `EAP method EAP_MD5 failed`. Tried the writeup's
+  `eap_preshared_key`, the shared operator/ACS password, the FEID, `cdmaFAP`, the
+  `sapi_password`, and substrings. **All fail.** So this one really is unique to the unit,
+  held in its radio module's U-boot env.
+- EAP-MD5 is an offline MD5 challenge/response, but the password is a long random string, so
+  capturing a response and cracking it is not practical.
+
+Still-unverified writeup values to apply **after** the tunnel is up (they exercise only once
+`femto-core` runs): the shared ACS/VPD/operator password, operator/ACS username
+`<OUI>-cdmaFAP-<MAC-without-colons>`, a TR-069 Connection Request password, and the SAPI
+password (host/radio only). SIP password was not in the recovered set. The literal values
+are in the writeup and in the VM's gitignored config, not here.
+
+**Remaining blocker:** read this unit's `eap_preshared_key` from its flash. Non-invasive
+reads are exhausted (see below): telnet/SSH are closed on the customer LAN (the writeup's
+root telnet needs `DEBUG_MODE=y`), and the host admin UI is only the consumer router. That
+leaves opening the unit for a UART console or a flash dump (as the writeup did).
 
 ### 2026-10-27: Device is an Airvana FC330A; LAN port has an admin portal
 Status: Confirmed
@@ -62,9 +99,13 @@ Looking for a way to read the device's stored credentials without opening it:
   server banner is blank.
 - **`FC330A` is the Airvana model number** for this femtocell (the Sprint Airave 2.5
   hardware). That pins the profile to the `airave-25-*` family.
-- Tried a dozen common Airvana/Sprint defaults (`admin:airvana`, `admin:admin`,
-  `airvana:airvana`, `admin:` blank, `sprint:sprint`, etc.) against the portal. **All 401.**
-  Basic auth is stateless here, so these attempts can't lock the device out.
+- The LAN admin portal login is **`admin` / `admin`** (per the Airave 2.5 user manual, and
+  confirmed on our unit). It's the Broadcom BCM6358 host's consumer router UI (WAN, LAN,
+  VPN, devices), `mini_httpd` + `setup.cgi` framesets. The embedded server is flaky under
+  back-to-back requests, so space them out and use `--no-keepalive`.
+- Realm `FC330A` 401s on the stylesheet too; after login, the frameset lives at
+  `setup.cgi?next_file=menu_ca_voip_sprint.htm` and `s_status.htm`.
+- This host UI does **not** expose the radio module's tunnel credentials.
 
 Open question: even with portal access, embedded GUIs rarely show the IKE PSK or EAP
 password in plaintext. The portal may still reveal the firmware version (2.x vs 5.x) and

@@ -22,6 +22,9 @@ Fix / takeaway:
 
 | Fact | Value | Status |
 | --- | --- | --- |
+| LAN address / alias | 192.168.1.201 / `sprint_femtocell` | Confirmed |
+| MAC OUI | 00:05:B9 (Airvana) | Confirmed |
+| Responds to ping | No (ARP only) | Confirmed |
 | Model (label) | | |
 | FCC ID | | |
 | Firmware (2.x / 5.x) | | |
@@ -33,6 +36,32 @@ Fix / takeaway:
 | Credentials collected (yes/no per field, see docs/03 3.3) | | |
 
 ---
+
+### 2026-10-27: Femtocell on the LAN; DNS redirect confirmed
+Status: Confirmed (DNS), Expected (IKE)
+
+- Static lease `192.168.1.201`, OPNsense alias `sprint_femtocell`.
+- The femtocell **doesn't answer ping** but does answer ARP. Its MAC has the Airvana OUI
+  `00:05:B9`, the same prefix as the FEID in the official example. That supports the idea
+  that FEID = MAC, which is still to be confirmed once the device presents its IKE identity.
+- The OPNsense **network-wide** port-53 redirect works. From the VM, `dig` to 8.8.8.8,
+  1.1.1.1, and 9.9.9.9, over both UDP and TCP, returns the cloaked `192.168.1.50`. So even a
+  femtocell with hardcoded resolvers gets the cloaked answer.
+- A 60-second capture on the VM saw **no traffic** from the femtocell while it was idling
+  after boot. It has probably cached DNS or backed off. Next step: power-cycle it while
+  capturing.
+
+### 2026-10-27: Bootstrap DNS cloaking works on OPNsense
+Status: Confirmed
+
+- The OPNsense dnscrypt-proxy plugin has no "Cloaking" tab. Its **Overrides** tab is the
+  place for cloaking rules. One override, `femto.sprint.net` -> `192.168.1.50`, covers the
+  whole subdomain: `segw.femto.sprint.net` and a random `preflight-NNNN.femto.sprint.net`
+  both resolve to the VM.
+- Answers have TTL 600 (the `cloak_ttl` default). AAAA queries return no address.
+- From the VM, `scripts/preflight.sh` now passes every DNS check.
+- Not yet verified: the femtocell itself using OPNsense for DNS (needs the device online;
+  see docs/02 2.3 for the redirect rule).
 
 ### 2026-10-27: VM built headlessly from the Ubuntu cloud image
 Status: Confirmed

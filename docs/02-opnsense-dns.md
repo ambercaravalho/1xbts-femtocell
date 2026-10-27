@@ -14,23 +14,24 @@ dnsmasq `address=/femto.sprint.net/...` override is **cloaking**.
 | Step | Where in OPNsense | Purpose |
 | --- | --- | --- |
 | Static lease for the femtocell | Services > DHCP (ISC or Kea) > LAN > static mappings | Stable IP to use in NAT and firewall rules |
-| Cloaking rule | Services > DNSCrypt-Proxy > Cloaking (called Overrides in some plugin versions) | `femto.sprint.net` -> VM IP |
+| Cloaking rule | Services > DNSCrypt-Proxy > **Overrides** (the plugin's name for cloaking rules) | `femto.sprint.net` -> VM IP |
 | DNS redirect NAT rule | Firewall > NAT > Port Forward | Catches a femtocell that ignores DHCP DNS and uses hardcoded resolvers |
 | (Optional) egress restriction | Firewall > Rules > LAN | Keeps the femtocell from talking to anything but the VM, DNS, and NTP |
 
 ## 2.1 Static lease for the femtocell
 
 The femtocell's MAC is on its label. You can also find it under **Services > DHCP > Leases**
-after its first boot. Create a static mapping such as `192.168.1.60`, outside the dynamic
-pool. Leave the DNS server field empty, or set it to the OPNsense LAN address
+after its first boot. Create a static mapping outside the dynamic pool. This setup uses
+`192.168.1.201`. Leave the DNS server field empty, or set it to the OPNsense LAN address
 `192.168.1.1`.
 
-Then create a host alias **Firewall > Aliases**, for example `femtocell = 192.168.1.60`.
-The rules below use it.
+Then create a host alias in **Firewall > Aliases**. This setup uses
+`sprint_femtocell = 192.168.1.201`. The rules below use it.
 
 ## 2.2 Cloaking rule
 
-Add one entry:
+The OPNsense plugin has no tab named "Cloaking". Its **Overrides** tab is where you add
+cloaking rules. Add one override:
 
 | Name / pattern | Destination |
 | --- | --- |
@@ -58,13 +59,18 @@ The femtocell normally uses the DNS server handed out by DHCP. That is the OPNse
 address, as long as a DNS service listens on port 53 there. Embedded devices sometimes
 hardcode public resolvers, so add a redirect as a safety net.
 
+This setup already has a **network-wide** redirect that sends every LAN client's port-53
+traffic to OPNsense, so nothing femtocell-specific is needed. Confirmed from the VM:
+`dig @8.8.8.8`, `@1.1.1.1`, and `@9.9.9.9` (UDP and TCP) for `segw.femto.sprint.net` all
+return `192.168.1.50`. If you don't have one, add a rule scoped to the femtocell:
+
 **Firewall > NAT > Port Forward > Add:**
 
 | Field | Value |
 | --- | --- |
 | Interface | LAN |
 | Protocol | TCP/UDP |
-| Source | alias `femtocell` |
+| Source | alias `sprint_femtocell` (or `LAN net` for a network-wide redirect) |
 | Destination | `This Firewall`, with **Destination / Invert** checked |
 | Destination port | DNS (53) |
 | Redirect target IP | `127.0.0.1` |
@@ -75,7 +81,7 @@ Check where dnscrypt-proxy listens under **Services > DNSCrypt-Proxy > General >
 Listen address**. If it binds only to the LAN address and not loopback, use the LAN
 address as the redirect target.
 
-Also consider blocking TCP 853 (DNS over TLS) from `femtocell`. It shouldn't be used, but
+Also consider blocking TCP 853 (DNS over TLS) from `sprint_femtocell`. It shouldn't be used, but
 blocking it costs nothing.
 
 ## 2.4 (Optional) restrict the femtocell's egress
@@ -85,8 +91,8 @@ Sprint's network is gone, so the femtocell only needs to reach:
 - OPNsense: DNS (53), DHCP, and NTP (123) if you run the OPNsense NTP service
 - The VM: UDP 500 and 4500 (IKE/IPsec)
 
-Add rules on LAN with source `femtocell`: pass to `This Firewall` on 53/123, pass to the
-VM on UDP 500/4500, then block everything else from `femtocell` and log it. The block log
+Add rules on LAN with source `sprint_femtocell`: pass to `This Firewall` on 53/123, pass
+to the VM on UDP 500/4500, then block everything else from `sprint_femtocell` and log it. The block log
 is useful later because it shows what else the device tries to reach (see
 [discovery](03-femto-discovery.md)). Same-subnet traffic from the femtocell to the VM
 doesn't pass through OPNsense, so these rules only affect traffic leaving the LAN.
@@ -102,17 +108,19 @@ dig @192.168.1.1 femto.sprint.net +short             # -> 192.168.1.50
 dig @192.168.1.1 example.com +short                  # normal answer, so upstream still works
 ```
 
-Test the redirect from a LAN host only if you added that host to the `femtocell` alias
-temporarily:
+Test the redirect from any LAN host the redirect covers. With a network-wide redirect that
+means any host. With a femtocell-only rule, the test host has to be added to
+`sprint_femtocell` temporarily:
 
 ```bash
 dig @8.8.8.8 segw.femto.sprint.net +short            # -> 192.168.1.50 if the redirect works
+dig +tcp @8.8.8.8 segw.femto.sprint.net +short       # same over TCP
 ```
 
 To see the names the femtocell **actually** queries, which helps when they differ from
 the docs:
 
-- **Interfaces > Diagnostics > Packet Capture**: interface LAN, host `192.168.1.60`,
+- **Interfaces > Diagnostics > Packet Capture**: interface LAN, host `192.168.1.201`,
   port 53. Then power-cycle the femtocell.
 - Or turn on query logging in the dnscrypt-proxy plugin and check its log.
 

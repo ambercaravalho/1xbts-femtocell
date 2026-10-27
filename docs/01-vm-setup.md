@@ -10,7 +10,7 @@ Examples in this repo use these addresses. Substitute your own everywhere:
 | LAN subnet | `192.168.1.0/24` |
 | OPNsense (gateway + DNS) | `192.168.1.1` |
 | VM (1xBTS host / SeGW) | `192.168.1.50` |
-| Femtocell | `192.168.1.60` |
+| Femtocell | `192.168.1.201` (OPNsense alias `sprint_femtocell`) |
 
 ## Automated path (what this setup actually used)
 

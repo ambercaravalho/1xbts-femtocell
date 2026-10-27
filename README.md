@@ -55,6 +55,10 @@ Also see:
 | `scripts/preflight.sh` | Read-only checks in the VM before starting anything |
 | `scripts/start-core.sh`, `scripts/stop-core.sh` | Start and stop the `cdma-nib` core in the right order |
 | `scripts/gen-secrets.sh` | Generate the A11 key and A12 secret into a private file |
+| `scripts/remote.sh` | Run commands on the Mac mini host using `.env` (see `.env.example`) |
+| `vm/create-vm.sh`, `vm/cloud-init/` | Build the VM headlessly from the Ubuntu ARM64 cloud image |
+| `vm/provision-guest.sh` | Install packages, Docker, Rust, and kernel modules in the guest |
+| `vm/launchd/` | LaunchAgent that starts the VM at host login |
 
 ## Secrets
 
@@ -65,7 +69,7 @@ logs either, since they can contain handset identities and credentials.
 
 ## Status
 
-- [ ] VM built and bridged
+- [x] VM built and bridged (`1xbts`, 192.168.1.50, provisioned, preflight passing except DNS)
 - [ ] DNS cloaking verified from the femtocell's LAN segment
 - [ ] Femtocell model and firmware identified
 - [ ] Device credentials obtained

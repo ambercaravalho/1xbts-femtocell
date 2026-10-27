@@ -1,0 +1,2 @@
+instance-id: __VM_HOSTNAME__-01
+local-hostname: __VM_HOSTNAME__

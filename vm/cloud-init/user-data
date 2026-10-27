@@ -1,0 +1,27 @@
+#cloud-config
+# Rendered by vm/create-vm.sh: __VM_HOSTNAME__, __VM_USER__, __SSH_PUBKEY__ are substituted.
+hostname: __VM_HOSTNAME__
+timezone: America/Los_Angeles
+
+users:
+  - name: __VM_USER__
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: true
+    # SECURITY-REVIEW: passwordless sudo for a key-only account so the VM can be provisioned
+    # non-interactively. Remove /etc/sudoers.d/90-cloud-init-users if you'd rather type a password.
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - __SSH_PUBKEY__
+
+ssh_pwauth: false
+disable_root: true
+
+growpart:
+  mode: auto
+  devices: ["/"]
+resize_rootfs: true
+
+package_update: true
+packages:
+  - openssh-server

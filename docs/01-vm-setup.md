@@ -12,6 +12,35 @@ Examples in this repo use these addresses. Substitute your own everywhere:
 | VM (1xBTS host / SeGW) | `192.168.1.50` |
 | Femtocell | `192.168.1.60` |
 
+## Automated path (what this setup actually used)
+
+Run everything from a workstation on the LAN. No installer, no VirtualBox GUI:
+
+```bash
+cp .env.example .env              # fill in the Mac mini's SSH host/user/password
+brew install sshpass
+vm/create-vm.sh                   # cloud image + cloud-init seed -> VM "1xbts" running headless
+ssh bts@192.168.1.50 'bash -s' < vm/provision-guest.sh    # packages, Docker, Rust, fou/ipip
+scripts/remote.sh 'VBoxManage storageattach 1xbts --storagectl VirtioSCSI --port 1 --device 0 --type dvddrive --medium emptydrive --forceunmount'
+rsync -a --exclude .env --exclude secrets/ --exclude .git/ ./ bts@192.168.1.50:1xbts-femtocell/
+ssh bts@192.168.1.50 1xbts-femtocell/scripts/preflight.sh
+```
+
+- [`scripts/remote.sh`](../scripts/remote.sh) runs commands on the Mac mini using `.env`
+  (`--sudo` for root, `--copy` for scp). It keeps one multiplexed SSH connection open,
+  because macOS briefly rejects password logins after several logins in a row.
+- [`vm/create-vm.sh`](../vm/create-vm.sh) downloads and checksum-verifies
+  `noble-server-cloudimg-arm64.img`, converts it to VDI (needs `qemu-img` on the host:
+  `brew install qemu`), and resizes it to 64 GB. It renders
+  [`vm/cloud-init/`](../vm/cloud-init/) into a `cidata` seed ISO with `hdiutil`, then
+  creates the VM. Settings are environment overrides at the top of the script.
+- The guest user is `bts`, with **SSH key only** (your `~/.ssh/id_ed25519.pub`) and
+  passwordless sudo. The fixed MAC `08:00:27:1b:75:50` matches the static netplan config.
+- [`vm/launchd/org.1xbts.vm-autostart.plist`](../vm/launchd/org.1xbts.vm-autostart.plist)
+  starts the VM at login of the host user. See 1.2 for its auto-login caveat.
+
+The manual steps below describe the same setup, for reference or for rebuilding by hand.
+
 ## Why these choices
 
 - **Apple Silicon only runs ARM64 guests.** VirtualBox 7.1+ supports Apple Silicon hosts,
@@ -48,7 +77,7 @@ stays the same.
 | CPUs | 4 (Rust builds are slow with fewer) |
 | Memory | 8 GB |
 | Disk | 64 GB, dynamically allocated (`target/` plus Docker images get large) |
-| Network > Adapter 1 | **Bridged Adapter**, name: the Mac's Ethernet interface (usually `en0`) |
+| Network > Adapter 1 | **Bridged Adapter**, name: the Mac's Ethernet interface. With VBoxManage, use the full name from `VBoxManage list bridgedifs`, e.g. `"en0: Ethernet"`. Plain `en0` leaves the NIC unattached |
 | Network > Advanced > Promiscuous Mode | **Allow All** |
 | Network > Advanced > Adapter type | Virtio-net if offered, otherwise the default |
 
@@ -65,8 +94,14 @@ VBoxManage startvm "1xbts" --type headless
 
 `VBoxManage modifyvm --autostart-enabled on` only takes effect on macOS once the VirtualBox
 autostart launchd service is configured (see "Starting Virtual Machines During System
-Boot" in the VirtualBox manual). A simpler option is a user LaunchAgent that runs the
-`startvm` command above at login, with the Mac set to log in automatically.
+Boot" in the VirtualBox manual). This setup uses a user LaunchAgent instead,
+[`vm/launchd/org.1xbts.vm-autostart.plist`](../vm/launchd/org.1xbts.vm-autostart.plist).
+It waits for the external VM volume to mount and starts the VM if it isn't already running.
+
+**Caveat:** a LaunchAgent only runs once the host user logs in. Auto-login is off on this
+Mac mini, so after a power loss the VM stays down until someone logs in, and the same goes
+for the Home Assistant VM. To make it unattended, enable auto-login in **System Settings >
+Users & Groups**. Auto-login isn't available when FileVault is on.
 
 ## 1.3 Give the VM a fixed address
 
@@ -144,8 +179,9 @@ The femto stack uses foo-over-UDP and IP-in-IP tunnels between containers and th
 sudo modprobe fou ipip && lsmod | grep -E '^(fou|ipip)'
 ```
 
-If `modprobe` says the module isn't found, install the extra modules for the running kernel
-and try again:
+The Ubuntu 24.04 ARM64 cloud image kernel (`6.8.0-*-generic`) already includes both modules.
+If `modprobe` says a module isn't found on another image, install the extra modules for the
+running kernel and try again:
 
 ```bash
 sudo apt install -y "linux-modules-extra-$(uname -r)"

@@ -52,10 +52,10 @@ if [[ -n "$DNS_SERVER" ]]; then pass "DNS server under test: $DNS_SERVER"; else 
 echo "Bootstrap DNS (via $DNS_SERVER)"
 if have dig && [[ -n "$DNS_SERVER" ]]; then
   for name in segw.femto.sprint.net "preflight-$RANDOM.femto.sprint.net"; do
-    got="$(dig +short +time=2 +tries=1 @"$DNS_SERVER" "$name" A | tail -n1)"
+    got="$(dig +short +time=2 +tries=1 @"$DNS_SERVER" "$name" A | grep -E '^[0-9.]+$' | tail -n1)"
     if [[ "$got" == "$VM_IP" ]]; then pass "$name -> $got"; else fail "$name -> '${got:-no answer}' (expected $VM_IP; check dnscrypt-proxy cloaking)"; fi
   done
-  got="$(dig +short +time=2 +tries=1 @"$DNS_SERVER" example.com A | tail -n1)"
+  got="$(dig +short +time=2 +tries=1 @"$DNS_SERVER" example.com A | grep -E '^[0-9.]+$' | tail -n1)"
   [[ -n "$got" ]] && pass "upstream resolution works (example.com)" || warn "example.com did not resolve via $DNS_SERVER"
 else
   fail "dig not installed (apt install dnsutils)"

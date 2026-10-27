@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Starts the 1xbts VM headless at login of the VirtualBox user.
+  Install: ~/Library/LaunchAgents/org.1xbts.vm-autostart.plist, then
+           launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.1xbts.vm-autostart.plist
+  Waits up to 5 minutes for the VM folder's external volume to mount.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>org.1xbts.vm-autostart</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>vm=1xbts; vbox=/Volumes/ssd_array/virtualbox_machines/1xbts/1xbts.vbox; PATH=/usr/local/bin:$PATH
+i=0; while [ ! -f "$vbox" ] &amp;&amp; [ $i -lt 60 ]; do sleep 5; i=$((i+1)); done
+[ -f "$vbox" ] || { echo "$(date): $vbox not found"; exit 1; }
+if VBoxManage showvminfo "$vm" --machinereadable | grep -q '^VMState="running"'; then
+  echo "$(date): $vm already running"
+else
+  echo "$(date): starting $vm"; VBoxManage startvm "$vm" --type headless
+fi</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>/tmp/org.1xbts.vm-autostart.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/org.1xbts.vm-autostart.log</string>
+</dict>
+</plist>

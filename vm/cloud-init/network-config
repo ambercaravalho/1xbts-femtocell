@@ -1,0 +1,13 @@
+version: 2
+ethernets:
+  lan0:
+    match:
+      macaddress: "__VM_MAC_COLON__"
+    set-name: lan0
+    dhcp4: false
+    addresses: [__VM_IP__/__VM_PREFIX__]
+    routes:
+      - to: default
+        via: __VM_GATEWAY__
+    nameservers:
+      addresses: [__VM_DNS__]

@@ -34,6 +34,53 @@ Fix / takeaway:
 
 ---
 
+### 2026-10-27: VM built headlessly from the Ubuntu cloud image
+Status: Confirmed
+
+Host: Mac mini M4, macOS 26.7.1, VirtualBox 7.2.22 (ARMv8 only). VMs live on
+`/Volumes/ssd_array/virtualbox_machines`, next to an existing `home_assistant_os` VM.
+
+- **The cloud image works.** `noble-server-cloudimg-arm64.img` converted with
+  `qemu-img convert -O vdi` boots under VirtualBox ARM with EFI, chipset `armv8virtual`,
+  graphics `qemuramfb`, a VirtioSCSI disk, and virtio-net. A cloud-init NoCloud seed
+  (`hdiutil makehybrid ... cidata`) on the same VirtioSCSI controller is picked up as
+  `/dev/sr0`. No installer, no autoinstall confirmation prompt. Disk resized to 64 GB and
+  `growpart` expanded root to 61 GB.
+- **Use the full bridge adapter name.** `--bridge-adapter1 en0` gives
+  `warning: Interface "en0" doesn't seem to exist` and the NIC isn't attached. The name has
+  to match `VBoxManage list bridgedifs` exactly: `"en0: Ethernet"`. `controlvm 1xbts nic1
+  bridged "en0: Ethernet"` fixed it on the running VM.
+- **No Local Network permission prompt.** A VM started headless over SSH bridged fine and
+  answered on 192.168.1.50 immediately.
+- **`fou` and `ipip` ship in the stock kernel** (`6.8.0-147-generic`), so
+  `linux-modules-extra` isn't needed. They autoload from `/etc/modules-load.d/1xbts.conf`
+  after a reboot.
+- **The VM also gets IPv6 via SLAAC** (`2601:602:...`). That's harmless; cloaking and the
+  tunnel are IPv4.
+- `cloud-init status` reads `disabled` after the seed ISO is ejected. That's expected, and
+  the static netplan config it wrote stays in place.
+- **Toolchain:** Docker 29.9.2 (aarch64) with Compose v5.6.1, and the Rust stable
+  `aarch64-unknown-linux-gnu` toolchain.
+- **Preflight:** everything passes except the bootstrap DNS checks. Cloaking isn't
+  configured yet on OPNsense (`segw.femto.sprint.net` returns no answer), and the 1xBTS
+  checkout doesn't exist yet. Upstream DNS through OPNsense works.
+
+### 2026-10-27: Mac mini SSH and host quirks
+Status: Confirmed
+
+- **macOS temporarily rejects SSH password logins** after about 5 password logins in a
+  couple of minutes ("Permission denied ... Too many authentication failures", with a
+  correct password). It cleared by itself within a few minutes.
+  `scripts/remote.sh` now reuses one connection (`ControlMaster`/`ControlPersist`), so
+  that doesn't happen anymore.
+- **The non-interactive SSH PATH** doesn't include `/usr/local/bin` (VBoxManage) or
+  `/opt/homebrew/bin` (brew, qemu-img). Scripts export it explicitly.
+- **Power settings were already server-grade** (`sleep 0`, `disksleep 0`, `womp 1`,
+  `autorestart 1`), so nothing changed there.
+- **Auto-login is off**, so the autostart LaunchAgent only runs after someone logs in. See
+  docs/01 "Optional: start the VM headless at boot".
+
+
 ### 2026-10-27: Known risks going in
 Status: Expected
 

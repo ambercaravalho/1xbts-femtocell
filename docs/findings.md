@@ -24,10 +24,15 @@ Fix / takeaway:
 | --- | --- | --- |
 | LAN address / alias | 192.168.1.201 / `sprint_femtocell` | Confirmed |
 | MAC OUI | 00:05:B9 (Airvana) | Confirmed |
+| FEID | equals the MAC, `0005B9xxxxxx` | Confirmed (IKE IDi) |
+| IKE identity | `<FEID>@femto.sprint.net` | Confirmed |
+| EAP identity | `<FEID>` | Confirmed |
+| IKE proposal | 3des-sha1-modp1024 (legacy default) | Confirmed |
 | Responds to ping | No (ARP only) | Confirmed |
 | Boot to first IKE attempt | ~4.5 min | Confirmed |
 | IKE version | IKEv2 (`IKE_SA_INIT` to UDP 500) | Confirmed |
-| Model (label) | | |
+| Model | Airvana FC330A (Sprint Airave 2.5) | Confirmed (LAN portal realm) |
+| LAN admin portal | http://192.168.17.1 (Basic auth, realm FC330A) | Confirmed |
 | FCC ID | | |
 | Firmware (2.x / 5.x) | | |
 | 1xBTS profile that works | | |
@@ -38,6 +43,72 @@ Fix / takeaway:
 | Credentials collected (yes/no per field, see docs/03 3.3) | | |
 
 ---
+
+### 2026-10-27: Device is an Airvana FC330A; LAN port has an admin portal
+Status: Confirmed
+
+Looking for a way to read the device's stored credentials without opening it:
+
+- **WAN side** (the port on our LAN, `192.168.1.201`): a top-200 TCP scan is all
+  `filtered` (default-drop firewall). UDP shows only the expected 53/67/69/123/161/500/4500
+  as `open|filtered`. No management service on the WAN side. A full 65535-port scan was
+  still running when this was written.
+- **LAN side:** the femtocell's LAN ports run a **DHCP + DNS server on `192.168.17.1`**
+  (its LAN MAC is `00:05:b9:0b:51:6c`, one above the WAN MAC, same unit). A laptop plugged
+  into a LAN port gets a `192.168.17.0/24` lease.
+- A full TCP scan of `192.168.17.1` shows **only port 80 open**. It's an embedded web admin
+  portal: `WWW-Authenticate: Basic realm="FC330A"`. Every path (including static assets)
+  returns 401 until authenticated; unknown paths return 404; `OPTIONS` returns 501. The
+  server banner is blank.
+- **`FC330A` is the Airvana model number** for this femtocell (the Sprint Airave 2.5
+  hardware). That pins the profile to the `airave-25-*` family.
+- Tried a dozen common Airvana/Sprint defaults (`admin:airvana`, `admin:admin`,
+  `airvana:airvana`, `admin:` blank, `sprint:sprint`, etc.) against the portal. **All 401.**
+  Basic auth is stateless here, so these attempts can't lock the device out.
+
+Open question: even with portal access, embedded GUIs rarely show the IKE PSK or EAP
+password in plaintext. The portal may still reveal the firmware version (2.x vs 5.x) and
+status, which is useful. The tunnel/provisioning secrets most likely require reading the
+device's stored config (serial console or flash), or known-global Airave values.
+
+### 2026-10-27: Identity probe: FEID = MAC, blocked on the IKE group key
+Status: Confirmed
+
+Ran only the SeGW (`docker compose --profile femto-segw-only up -d`) with placeholder
+credentials and `feid` set to the MAC (`0005B9xxxxxx`). The device connected far enough to
+reveal its identity before authentication failed. No secrets were sent to the device.
+
+What the `femto-segw` (strongSwan 5.9.8) log showed:
+
+- `192.168.1.201 is initiating an IKE_SA`, proposal
+  `3DES_CBC/HMAC_SHA1_96/PRF_HMAC_SHA1/MODP_1024` (the `legacy` default `3des-sha1-modp1024`
+  matches, so no proposal tuning needed).
+- `IKE_AUTH request ... IDi` = **`0005B9xxxxxx@femto.sprint.net`**, EAP identity
+  **`0005B9xxxxxx`**. So **FEID = Ethernet MAC** is confirmed, and the IKE identity is
+  `<FEID>@femto.sprint.net` (matches `segw.ike_identity_domain` default `femto.sprint.net`).
+- The SeGW selected peer config `fap-0005B9xxxxxx`, authenticated itself with the
+  (placeholder) PSK, and sent `EAP/REQ/MD5`.
+- The device **rejected** it: `received unencrypted informational ... NOTIFY` that
+  strongSwan "could not decrypt". That is the device refusing the SeGW's PSK AUTH, i.e. the
+  **`ike_group_key` is wrong** (expected, it was a placeholder). It never got to checking
+  the EAP-MD5 password.
+
+Credential model (from `crates/cdma-femto/src`):
+
+| Secret | Where it's checked | Scheme |
+| --- | --- | --- |
+| `ike_group_key` | `segw.rs` strongSwan `secrets` | IKEv2 PSK the SeGW presents to the device |
+| `eap_password` | strongSwan `eap-md5`, id = FEID | device authenticates to the SeGW |
+| `acs.username` / `acs.password` | `acs/server.rs` `authenticate_fap` | HTTP Digest (device sends Authorization) |
+| `sip.password` | `sip.rs` | SIP Digest |
+
+All four are values the **device already holds**. 1xBTS has to be told the same values; it
+can't assign new ones. Order they matter: group key (now), then EAP password, then ACS, then
+SIP. The Digest/EAP exchanges only verify a secret, so the plaintext can't be recovered from
+watching the device. It has to come from the device's stored config or a known Airave value.
+
+The probe config lives at `~/1xbts/config/femto.local.json` on the VM (placeholders only).
+The repo itself has no real credentials.
 
 ### 2026-10-27: Everything builds on ARM64
 Status: Confirmed

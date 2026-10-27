@@ -91,6 +91,33 @@ That confirms the FEID without opening the device.
 
 Copy this table into findings with the "Have it?" column filled in, but never the values.
 
+### 3.3.1 Identity probe (confirms FEID without credentials)
+
+With DNS cloaking working (step 2), run only the SeGW with **placeholder** secrets and your
+guessed FEID. The device reveals its identity before authentication fails:
+
+```bash
+cd ~/1xbts
+# femto.local.json: set feid to the MAC without separators, profile airave-25-2x,
+# security_profile legacy, and any non-empty placeholder ike_group_key / eap_password.
+docker compose --profile femto-segw-only up -d
+docker compose logs -f femto-segw | grep -E 'IKE_SA_INIT|IDi|peer config|EAP|informational'
+docker compose --profile femto-segw-only down
+```
+
+Read the result:
+
+| Log line | Meaning |
+| --- | --- |
+| `looking for peer configs matching ...[<FEID>@femto.sprint.net]` | the device's real IKE identity, so the FEID is confirmed |
+| `selected peer config 'fap-<FEID>'` | your `feid` matches the device |
+| `no matching peer config found` | your `feid` is wrong; use the identity from the IDi line |
+| `received unencrypted informational ... NOTIFY` right after our `AUTH` | the device rejected our PSK, so **`ike_group_key` is wrong** |
+| `EAP method EAP_MD5 succeeded` | group key right, EAP password right |
+
+On this unit the probe confirmed FEID = MAC and stopped at the group key (see findings).
+Leave the radio disabled for this test; the SeGW never sends configuration to the device.
+
 ## 3.4 Radio-side facts to collect
 
 These decide the `1x` / `evdo` blocks:

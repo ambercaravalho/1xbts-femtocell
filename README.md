@@ -74,7 +74,8 @@ logs either, since they can contain handset identities and credentials.
 - [x] Femtocell static lease (192.168.1.201) and network-wide DNS redirect
 - [x] Femtocell seen sending IKE to the VM (IKEv2, ~4.5 min after power-on)
 - [ ] Femtocell model and firmware identified
-- [ ] Device credentials obtained
+- [x] FEID confirmed (= MAC) via SeGW identity probe
+- [ ] Device credentials obtained (blocked on IKE group key, then EAP, ACS, SIP)
 - [x] 1xBTS femto profile and `cdma-nib` build on ARM64
 - [ ] IPsec tunnel up
 - [ ] ACS provisioned, SIP registered

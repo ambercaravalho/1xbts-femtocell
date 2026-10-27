@@ -8,7 +8,7 @@ Everything runs **in the VM**.
 Assumed layout in the VM:
 
 ```text
-~/1xbts             # 1xBTS source checkout (GitHub link on 1xbts.org)
+~/1xbts             # git clone https://github.com/chrismoos/1xbts.git
 ~/1xbts-femtocell   # this repo
 ```
 

@@ -8,8 +8,10 @@ export DEBIAN_FRONTEND=noninteractive
 echo "==> base packages"
 sudo apt-get update -q
 sudo apt-get -yq full-upgrade
-sudo apt-get -yq install build-essential pkg-config libssl-dev protobuf-compiler clang \
-  git curl ca-certificates jq dnsutils iproute2 tcpdump chrony rsync
+# Build deps per https://1xbts.org/docs/getting-started/building/ plus tooling.
+sudo apt-get -yq install build-essential cmake pkg-config libssl-dev protobuf-compiler \
+  libprotobuf-dev libclang-dev clang git curl ca-certificates jq dnsutils iproute2 tcpdump \
+  chrony rsync
 sudo systemctl enable --now chrony
 
 echo "==> kernel modules fou, ipip"

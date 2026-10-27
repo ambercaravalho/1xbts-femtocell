@@ -34,10 +34,41 @@ Fix / takeaway:
 | FEID equals Ethernet MAC? | | |
 | Bootstrap DNS names actually queried | | |
 | Other hosts it tries to reach (from OPNsense block log) | | |
-| Cold-start GPS lock time | | |
+| Cold-start GPS lock time | GPS LED solid green within minutes of power-on | Expected |
 | Credentials collected (yes/no per field, see docs/03 3.3) | | |
 
 ---
+
+### 2026-10-27: Everything builds on ARM64
+Status: Confirmed
+
+- `docker compose --profile femto build` built `1xbts-femto`, `1xbts-femto-segw`,
+  `1xbts-fou-nat`, and `1xbts-speedtest` in **3m47s** with no `exec format error` and
+  no emulation.
+- `cargo build --release -p cdma-nib --no-default-features` finished in **2m33s**
+  (4 vCPU) on Rust 1.96.0 `aarch64-unknown-linux-gnu`.
+- So the "ARM64 images" risk is **Disproved** for the femto profile. The `mms` profile
+  (`mbuni`) hasn't been built yet.
+
+### 2026-10-27: 1xBTS source, build deps, and legacy SeGW auth
+Status: Confirmed (source), Expected (LED meanings)
+
+- **Source:** [chrismoos/1xbts](https://github.com/chrismoos/1xbts), cloned to
+  `~/1xbts` on the VM at `c78698f` (2026-10-24). `rust-toolchain.toml` pins Rust
+  **1.96.0**, which rustup installs on the first build.
+- **Missing build deps:** the official build page also needs `cmake`, `libprotobuf-dev`, and
+  `libclang-dev` (for bindgen). They're now in `vm/provision-guest.sh`. The Baresip `re`
+  library is only needed for the SIP voice gateway (external calls), not for the femto
+  core.
+- **The femto Compose profile** uses `postgres:17`, `node:25-bookworm`, `alpine/socat`,
+  and local builds from `rust:1-bookworm` / `debian:bookworm-slim`. All are official
+  multi-arch images, so arm64 should be fine.
+- **Legacy SeGW auth** (`crates/cdma-femto/src/segw.rs`): strongSwan IKEv2 with
+  `local auth = psk` (`ike_group_key`) and `remote auth = eap-md5`. `eap_identity` is
+  optional and defaults to the FEID. The default IKE identity domain is `femto.sprint.net`.
+- **Device LEDs after boot with GPS antenna connected:** Broadband solid green, **GPS solid
+  green**, Mobile blinking green, VoIP phone off. Likely meanings: GPS locked, and Mobile
+  blinking while the tunnel/service isn't up yet. That matches the unanswered IKE retries.
 
 ### 2026-10-27: Femtocell sends IKEv2 to the VM after a power cycle
 Status: Confirmed

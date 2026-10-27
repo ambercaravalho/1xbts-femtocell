@@ -75,7 +75,7 @@ logs either, since they can contain handset identities and credentials.
 - [x] Femtocell seen sending IKE to the VM (IKEv2, ~4.5 min after power-on)
 - [ ] Femtocell model and firmware identified
 - [ ] Device credentials obtained
-- [ ] 1xBTS femto profile builds on ARM64
+- [x] 1xBTS femto profile and `cdma-nib` build on ARM64
 - [ ] IPsec tunnel up
 - [ ] ACS provisioned, SIP registered
 - [ ] GPS lock, radio enabled

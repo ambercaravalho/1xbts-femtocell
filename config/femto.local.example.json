@@ -29,7 +29,6 @@
       "segw": {
         "security_profile": "legacy",
         "ike_group_key": "${FEMTO_IKE_GROUP_KEY}",
-        "eap_identity": "${FEMTO_EAP_IDENTITY}",
         "eap_password": "${FEMTO_EAP_PASSWORD}"
       }
     }

@@ -78,9 +78,15 @@ footer) or on IRC `#1xbts`. Collect them into your private
 | ACS username | `sites.<name>.acs.username` | [ ] | |
 | ACS password | `sites.<name>.acs.password` | [ ] | |
 | SIP password | `sites.<name>.sip.password` | [ ] | |
-| IKE group key | `sites.<name>.segw.ike_group_key` | [ ] | legacy security profile |
-| EAP identity | `sites.<name>.segw.eap_identity` | [ ] | |
-| EAP password | `sites.<name>.segw.eap_password` | [ ] | |
+| IKE group key | `sites.<name>.segw.ike_group_key` | [ ] | legacy profile: the PSK the SeGW authenticates itself with |
+| EAP identity | `sites.<name>.segw.eap_identity` | [ ] | **optional**, defaults to the FEID; only set it if the device's EAP identity differs |
+| EAP password | `sites.<name>.segw.eap_password` | [ ] | legacy profile: the femtocell authenticates with EAP-MD5 |
+
+How the `legacy` profile works (from `crates/cdma-femto/src/segw.rs`): strongSwan answers
+IKEv2 with `local auth = psk` (the group key) and `remote auth = eap-md5` (the femtocell's
+EAP identity and password). The device sends its identity early in `IKE_AUTH`, so
+`femto-segw` logs will show the IDi / EAP identity even before the credentials are right.
+That confirms the FEID without opening the device.
 | Term-auth PSK (5.x, EV-DO) | top-level `term_auth_psk` | [ ] | must equal PDSN `a12.radius_secret` |
 
 Copy this table into findings with the "Have it?" column filled in, but never the values.

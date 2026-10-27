@@ -25,6 +25,8 @@ Fix / takeaway:
 | LAN address / alias | 192.168.1.201 / `sprint_femtocell` | Confirmed |
 | MAC OUI | 00:05:B9 (Airvana) | Confirmed |
 | Responds to ping | No (ARP only) | Confirmed |
+| Boot to first IKE attempt | ~4.5 min | Confirmed |
+| IKE version | IKEv2 (`IKE_SA_INIT` to UDP 500) | Confirmed |
 | Model (label) | | |
 | FCC ID | | |
 | Firmware (2.x / 5.x) | | |
@@ -36,6 +38,18 @@ Fix / takeaway:
 | Credentials collected (yes/no per field, see docs/03 3.3) | | |
 
 ---
+
+### 2026-10-27: Femtocell sends IKEv2 to the VM after a power cycle
+Status: Confirmed
+
+- About 4.5 minutes after power-on, the femtocell started sending **IKEv2 `IKE_SA_INIT`**
+  from `192.168.1.201:500` to `192.168.1.50:500`. The cloaked `segw*.femto.sprint.net`
+  answer is reaching it, so the DNS bootstrap works end to end.
+- Retries come every 5 seconds in bursts, with longer gaps between bursts.
+- The VM answers `ICMP port 500 unreachable` because nothing listens yet. That's expected
+  until the 1xBTS `femto-segw` container is running.
+- So the device speaks IKEv2. Its identity (IDi) and proposals will appear in the
+  `femto-segw` logs once the SeGW answers `IKE_SA_INIT`.
 
 ### 2026-10-27: Femtocell on the LAN; DNS redirect confirmed
 Status: Confirmed (DNS), Expected (IKE)

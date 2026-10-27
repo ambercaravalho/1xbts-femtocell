@@ -72,7 +72,7 @@ logs either, since they can contain handset identities and credentials.
 - [x] VM built and bridged (`1xbts`, 192.168.1.50, provisioned)
 - [x] DNS cloaking verified on the LAN (OPNsense dnscrypt-proxy Overrides)
 - [x] Femtocell static lease (192.168.1.201) and network-wide DNS redirect
-- [ ] Femtocell seen sending IKE to the VM
+- [x] Femtocell seen sending IKE to the VM (IKEv2, ~4.5 min after power-on)
 - [ ] Femtocell model and firmware identified
 - [ ] Device credentials obtained
 - [ ] 1xBTS femto profile builds on ARM64

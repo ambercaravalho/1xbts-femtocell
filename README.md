@@ -73,13 +73,13 @@ logs either, since they can contain handset identities and credentials.
 - [x] DNS cloaking verified on the LAN (OPNsense dnscrypt-proxy Overrides)
 - [x] Femtocell static lease (192.168.1.201) and network-wide DNS redirect
 - [x] Femtocell seen sending IKE to the VM (IKEv2, ~4.5 min after power-on)
-- [ ] Femtocell model and firmware identified
+- [x] Femtocell model and firmware identified (Airvana FC330A, firmware 5.x; profile `airave-25-5x`)
 - [x] FEID confirmed (= MAC) via SeGW identity probe
 - [x] IKE group key validated (global Airave 2.5 constant)
-- [ ] Device credentials obtained (blocked on per-device EAP-MD5 password in the unit's flash)
+- [x] Device credentials obtained (all six; recovered via radio-module root)
 - [x] 1xBTS femto profile and `cdma-nib` build on ARM64
-- [ ] IPsec tunnel up
-- [ ] ACS provisioned, SIP registered
-- [ ] GPS lock, radio enabled
+- [x] IPsec tunnel up
+- [x] ACS provisioned, SIP registered
+- [x] GPS lock, radio enabled (sector admin-unlocked; carrier goes on air once GPS timing settles)
 - [ ] First handset registration, call, SMS
 - [ ] Packet data

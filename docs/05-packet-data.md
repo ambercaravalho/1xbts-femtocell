@@ -58,8 +58,9 @@ it's missing.
 
 ## 5.4 EV-DO (optional)
 
-1. Fill in the site's `evdo` block (band, channel, sector ID, color code) and set
-   `enabled: true`.
+1. Fill in the site's `evdo` block (band, channel, sector ID, color code, `tx_power`) and set
+   `enabled: true`. `tx_power` follows the same range as the 1x sector: -30 dBm floor, **+6 dBm**
+   proven max on the FC330A (accepted fault-free).
 2. **Match `evdo.sector_id` to the device's readback, including its `0x` prefix.** The Airave
    returns the 128-bit sector ID as `0x...`; a bare-hex value drifts against it, so the ACS
    keeps trying to `SET` a value the firmware rejects with `is856SectorElement.sectorId: 9002`

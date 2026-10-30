@@ -165,7 +165,7 @@ These decide the `1x` / `evdo` blocks:
 | --- | --- |
 | Supported band class(es) | Airave 2.5+ serves BC1 only. Your handset must support the same band |
 | A channel the device accepts | `1x.channel`. Use the official example (BC1 ch 50) until you know better |
-| Minimum transmit power | Airave 2.5 rejects below **-30 dBm** |
+| Transmit power range | Airave 2.5 rejects below **-30 dBm**; **+6 dBm** is the proven usable max (Sprint's production value, accepted fault-free on this FC330A) |
 | GPS lock time at your antenna position | The radio won't come up without timing |
 | Whether EV-DO is supported/wanted | `evdo.enabled` is a separate carrier |
 

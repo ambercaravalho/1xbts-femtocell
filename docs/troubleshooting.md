@@ -15,7 +15,8 @@ rows.
 | No IKE packets arrive at the VM at all | Network | `ufw` rules for UDP 500/4500. Is the femtocell on the same LAN? Is the cached cloak TTL pointing at an old IP? Reboot the femtocell |
 | SA established, ACS pending | Provisioning | `docker compose logs femto-core`. Check ACS username/password and profile. Check the in-tunnel DNS names (`FEMTO_ACS_DOMAIN` default `fsmhdm.femto.spcsdns.net`) |
 | ACS provisioned, SIP not registered | SIP | SIP password and realm, `FEMTO_SIP_DOMAIN` (default `fap.airave2.ims.spcsdns.net`) |
-| Device online, radio unavailable | Radio | `1x.enabled`, a supported band and channel, `max_sector_power_dbm` >= -30, **GPS lock** (antenna near a window, allow time) |
+| Device online, radio unavailable | Radio | `1x.enabled`, a supported band and channel, `max_sector_power_dbm` between -30 and +6 dBm, **GPS lock** (antenna near a window, allow time) |
+| Coverage too small (only works right next to the femto) | Radio power | Raise `1x.max_sector_power_dbm` (and `evdo.tx_power`) toward the **+6 dBm** FC330A max; restart `femto-core` and re-sync. Values above +6 fault 9002 and keep the prior setting (docs/04) |
 | Radio up, handset doesn't register | Handset | Subscriber IMSI and ESN/MEID in **Subscribers**. Handset PRL, band, channel, SID 22 / NID 65535 matching the `1x` block |
 | HLR lookups fail / PDSN "MEID-to-IMSI disabled" | Core start order | HLR must be up before PDSN: `stop-core.sh && start-core.sh` |
 | Call connects, no audio | Voice bearer | Rerun `sudo docker/femto/host-route.sh add` (after any SeGW recreate). Does `voice_bearer_bind_ip` equal the femto Docker network host IP (not loopback)? |

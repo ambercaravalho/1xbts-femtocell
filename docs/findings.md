@@ -40,11 +40,36 @@ Fix / takeaway:
 | ACS username format | `<OUI>-cdmaFAP-<MAC>` (`0005B9-cdmaFAP-0005B9xxxxxx`) | Confirmed |
 | Firmware (2.x / 5.x) | 5.x (device reports `SoftwareVersion 5.0.02.094` in its ACS Inform) | Confirmed |
 | 1xBTS profile that works | `airave-25-5x` (the `2x` profile faults with CPE 9005 on this firmware) | Confirmed |
+| Sector power range | -30 dBm floor; **+6 dBm** accepted fault-free for both 1x and EV-DO (Sprint production value) | Confirmed |
 | Bootstrap DNS names queried | `segw.femto.sprint.net` family, cloaked to the VM (proven by IKE reaching the VM end to end) | Confirmed |
 | Cold-start GPS lock time | GPS LED solid green within minutes of power-on; ACS readback reports `GPSGotFix=True`, `TimingGood=True` | Confirmed |
 | Credentials collected (yes/no per field, see docs/03 3.3) | FEID, IKE group key, EAP identity, EAP password, ACS username, ACS password: all yes | Confirmed |
 
 ---
+
+### 2026-10-30: Raised 1x and EV-DO sector power to +6 dBm (hardware max); carrier confirmed on air
+Status: Confirmed
+Context: Coverage was only a few feet at -10 dBm. Raised transmit power to the hardware max.
+
+Observed:
+- **Authoritative max.** The reverse-engineering writeup's captured Sprint *production*
+  `airvana.xml` for this exact FC330A ran the 1x carrier at `sectorTxPower 6` (**+6 dBm**).
+  1xBTS enforces only the **-30 floor** (`crates/cdma-femto/src/config.rs`
+  `MIN_SECTOR_POWER_DBM`); there is no max in code, and the device self-limits to its FCC
+  certification - it rejects out-of-range values with fault 9002 and keeps the prior value, so
+  probing is non-destructive.
+- **Applied.** Set 1x `max_sector_power_dbm` -10 -> 6 and `evdo.tx_power` -10 -> 6 in the VM's
+  gitignored `femto.local.json` (timestamped backups kept), restarted `femto-core`.
+- **Both applied clean.** The ACS pushed `MaxSectorPowerIndBm=6` and `sectorElementTxPower=6`,
+  every `SetParameterValuesResponse status=0 (applied)`, **no 9002**. Readback confirms
+  `MaxSectorPowerIndBm=6` and EV-DO `sectorElementAdminStatus=2` / `sectorElementOperStatus=2`.
+- **Carrier confirmed On air.** The readback now shows `OneXSectorOperState=0` (`0` = On air),
+  not the usual post-unlock `1` sampling artifact. That is ~16 dB (~40x) more power than before.
+
+Fix / takeaway: **+6 dBm is the proven usable max for this FC330A** - it matches Sprint's own
+production value and is accepted fault-free. Start new deployments at the -30 floor (radio
+disabled) and raise after verifying; asking for more than +6 just faults 9002 and keeps the
+prior value.
 
 ### 2026-10-30: Two-way voice call and handset data attach/browsing confirmed
 Status: Confirmed (voice + data attach), Expected (EV-DO vs 1x throughput to verify)

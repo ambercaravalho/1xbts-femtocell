@@ -80,7 +80,7 @@ logs either, since they can contain handset identities and credentials.
 - [x] 1xBTS femto profile and `cdma-nib` build on ARM64
 - [x] IPsec tunnel up
 - [x] ACS provisioned, SIP registered
-- [x] GPS lock, timing synchronized, 1x carrier on air (sector power -10 dBm)
+- [x] GPS lock, timing synchronized, 1x carrier on air (sector power +6 dBm, 1x + EV-DO)
 - [x] Handset registered on air; 1xBTS welcome SMS delivered
 - [x] Subscriber provisioned in the HLR (Palm Treo 700w)
 - [x] Two-way voice call placed

@@ -62,8 +62,10 @@ Things to know about these files:
   that line otherwise, rather than leaving the placeholder in place. Any `${...}` string
   left in the file is used literally as a secret.
 - `1x.enabled` stays **false** until you have reviewed band, channel, and power.
-- `max_sector_power_dbm` must be **-30 or higher** on the Airave 2.5. Anything lower is
-  rejected.
+- `max_sector_power_dbm` must be **-30 or higher** on the Airave 2.5 (anything lower is
+  rejected). **+6 dBm is the proven usable max** on the FC330A (Sprint's own production value,
+  accepted fault-free; see [findings](findings.md)). Start at the floor and raise after
+  verifying; asking for more than +6 just faults 9002 and keeps the prior value.
 - Keep `mcc` and `imsi_11_12` as **strings** so leading zeros survive.
 - `msc.local.json` arrays **replace** the base config's arrays. If you later add SDR cells,
   list them all.

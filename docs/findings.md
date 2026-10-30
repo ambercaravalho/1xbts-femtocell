@@ -79,13 +79,18 @@ Observed:
   1x packet sessions hold and pass bidirectional traffic (`nSuccessfulOneXDataCalls` ~96%). Real
   improvement for **1x** data stability, but unrelated to EV-DO.
 
-Fix / takeaway: EV-DO is **not working** - keep the earlier "two-way voice + data" note's EV-DO
-item open. Getting these handsets onto the DO carrier is handset-side: (1) confirm each phone's
-data mode is hybrid/EVDO-enabled, not 1X-only; and (2) the likely real blocker - give the phones a
-PRL whose EV-DO acquisition record matches the femto's BC1 ch 75, or reconfigure the femto's
-SID/NID + DO channel to match an EV-DO system the existing PRL already knows. Both need handset
-read/write (QPST/QXDM + MSL/SPC). No pure network-side change can force acquisition. Keep
-`packet.mobile_ip.enabled=false` regardless - it is the right setting for 1x Simple IP.
+Data mode ruled out: the Bold 9930 is in **Global** mode with data roaming on (fully allowed to
+use EV-DO) and still never attempts the DO carrier (`connectionCount=0`, `SO 33`); the Treo 700w
+has no user-facing EV-DO toggle at all (PRL-driven). So capability/mode is not the blocker.
+
+Fix / takeaway: EV-DO is **not working** and acquisition is purely handset/PRL-driven - 1xbts has
+no lever for it. Getting these phones onto the DO carrier would need handset tooling (QPST/QXDM +
+a cable, plus the MSL/SPC to write): either (1) read a phone's PRL, find a BC1 EV-DO acquisition
+channel it already knows, and set the femto's `evdo.channel` to match (may work without writing the
+phone), or (2) write a custom PRL associating SID 22 with EV-DO on BC1 ch 75. No pure network-side
+change can force acquisition. **Decision (2026-10-30): accept 1xRTT as the data ceiling** for these
+legacy handsets - EV-DO is out of scope without that tooling. Keep `packet.mobile_ip.enabled=false`
+regardless; it is the right setting for stable 1x Simple IP.
 
 ### 2026-10-30: Raised 1x and EV-DO sector power to +6 dBm (hardware max); carrier confirmed on air
 Status: Confirmed

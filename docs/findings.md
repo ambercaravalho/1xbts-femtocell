@@ -48,6 +48,56 @@ Fix / takeaway:
 
 ---
 
+### 2026-10-30: TLS-stripping proxy for handset data stood up in fou-nat's namespace
+Status: Confirmed (simulated handset traffic through `fou0`), Expected (on a real handset, and
+that a `fou-nat` restart strands the proxy until `tls-strip.sh up`; not tested because a call
+was in progress)
+Context: The handsets' TLS stacks and root stores can't reach modern HTTPS. Added a
+transparent proxy that gives them plain HTTP and plaintext mail and makes each connection
+upstream over verified TLS, with no CA installed on the phones (docs/06).
+
+Observed:
+- **Where to hook in.** `fou-nat` runs iptables-nft 1.8.9 (Debian bookworm). Handsets sit on
+  `fou0` (`10.55.0.0/24`, gateway `10.55.0.1`) and are masqueraded out `eth0`. nginx on the
+  gateway's `:80` serves the MMSC hijack and `speed.`, so the port-80 redirect has to skip
+  `-d 10.55.0.0/24`. No carrier HTTP proxy is hijacked in unbound, so the phones browse
+  directly. No handset traffic flowed during the capture window, so ports and `Host`
+  headers on the real phones are still to confirm.
+- **Separate compose project, not an overlay.** Relative paths in an extra `-f` compose file
+  resolve against the first file's directory (the 1xBTS checkout), so the proxy is its own
+  project (`1xbts-tls-strip`). Its containers join `network_mode: container:1xbts-fou-nat`.
+  A rules container using the same Debian release installs and removes the `TLS_STRIP_*`
+  chains, so the rules come and go with the stack. `tls-strip.sh down` left zero rules behind.
+- **fou-nat's TCP relay (`:17012`) takes one client, and that client is the PDSN.** Upstream's
+  `test_fou_tcp_http.py` connects to the relay, which logs `replacing existing TCP client`.
+  That knocks the PDSN off its FOU TCP tunnel; it reconnected within 3 s each time (no handset
+  was attached). The end-to-end test instead sends FOU-encapsulated packets straight to the
+  kernel FOU port (UDP 17010) inside the namespace and reads replies off `fou0`. Two gotchas:
+  only an `ETH_P_ALL` packet socket sees packets *leaving* `fou0`, and `fou-nat`'s Python
+  (3.11) can't parse the upstream helper, so the test borrows the mitmproxy image's Python.
+- **A TCP connect to 443 is not proof of HTTPS.** `neverssl.com` accepts TCP on 443 and even
+  completes a valid TLS handshake (Amazon-issued certificate), then closes without answering
+  after about 5 s. The probe now requires an HTTP answer to `HEAD /` over verified TLS. It also
+  aborts the socket instead of closing gracefully: waiting for the server's TLS close stalled
+  the first version of the probe about 5 s past its timeout. In one run neverssl still passed
+  the probe and then dropped the real GET (502), so an upgraded request that fails with no
+  response (and no certificate error) now flips that host to HTTP for the next request.
+  neverssl's port 80 is also slow from here (3 to 7 s to connect), so the end-to-end test uses
+  `httpforever.com` instead: it refuses the TLS handshake outright, so the probe says no in
+  0.12 s.
+- **Results** (`e2e_test.py`): `example.com` 200 via HTTPS, `httpforever.com` 200 via HTTP
+  fallback, `google.com` 301 with `Location: http://www.google.com/` and no HSTS,
+  `expired.badssl.com` refused with 502 (`Certificate verify failed: certificate has
+  expired`, not downgraded), gateway traffic bypassed the proxy. With temporary Gmail
+  upstreams, the IMAP (993) and POP (995) listeners returned the server greeting over implicit
+  TLS, and SMTP returned `220` after STARTTLS on 587. Those test upstreams were removed
+  afterward.
+
+Fix / takeaway: run `scripts/tls-strip.sh up` in the VM, and again after any `fou-nat`
+restart or VM reboot, because the proxy containers keep the old namespace until re-created.
+Still to do on real phones: browse `http://` sites from the Treo and the Bold, confirm the
+MMSC still works, and set up Treo mail through `10.55.0.1` with SSL off.
+
 ### 2026-10-30: EV-DO still NOT acquired by the handsets (all data is 1x); disabling Mobile IP only stabilized the 1x packet path
 Status: Confirmed
 Context: Both handsets still show "1x" with no speed-up. Checked whether data actually rides EV-DO

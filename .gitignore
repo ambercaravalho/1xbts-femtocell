@@ -3,6 +3,8 @@ config/*.local.json
 !config/*.local.example.json
 *.local.json
 !*.local.example.json
+*.local.env
+!*.local.example.env
 .env
 .env.*
 !.env.example
@@ -25,6 +27,10 @@ run/
 
 # Third-party tool clones (re-clone on demand; see docs/03)
 Sprint-Airave-Airvana-2.5-Root/
+
+# Python test artifacts
+__pycache__/
+.pytest_cache/
 
 # OS / editor
 .DS_Store

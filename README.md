@@ -39,6 +39,7 @@ Follow these in order:
 3. [Femtocell discovery](docs/03-femto-discovery.md): identify model and firmware, pick a profile, gather credentials
 4. [1xBTS bring-up](docs/04-1xbts-bringup.md): build, start the femto stack and core, check the dashboard
 5. [Packet data](docs/05-packet-data.md): PDSN A11/A12, capabilities, EV-DO, and the MMS stack
+6. [TLS-stripping proxy](docs/06-tls-strip.md) (optional): plain HTTP and mail for handsets, verified TLS upstream
 
 Also see:
 
@@ -51,10 +52,13 @@ Also see:
 | --- | --- |
 | `docs/` | Step-by-step guide, findings, troubleshooting |
 | `config/*.local.example.json` | Templates for the 1xBTS `config/*.local.json` overrides (placeholders only) |
+| `config/tls-strip.local.example.env` | Template for the TLS-strip proxy's mail upstreams and options |
+| `docker/tls-strip/` | TLS-stripping proxy: compose project, mitmproxy addon and tests, stunnel mail, rules container, end-to-end test |
 | `opnsense/dnscrypt-cloaking.txt` | Cloaking rule to paste into OPNsense |
 | `scripts/preflight.sh` | Read-only checks in the VM before starting anything |
 | `scripts/start-core.sh`, `scripts/stop-core.sh` | Start and stop the `cdma-nib` core in the right order |
 | `scripts/gen-secrets.sh` | Generate the A11 key and A12 secret into a private file |
+| `scripts/tls-strip.sh` | Bring the TLS-strip proxy up or down in `fou-nat`'s namespace and check its status |
 | `scripts/remote.sh` | Run commands on the Mac mini host using `.env` (see `.env.example`) |
 | `vm/create-vm.sh`, `vm/cloud-init/` | Build the VM headlessly from the Ubuntu ARM64 cloud image |
 | `vm/provision-guest.sh` | Install packages, Docker, Rust, and kernel modules in the guest |
@@ -63,7 +67,7 @@ Also see:
 ## Secrets
 
 Real credentials (FEID, ACS, SIP, IKE group key, EAP, A11/A12 keys) go only in
-`*.local.json` files and `secrets/`, both of which are gitignored. The example files
+`*.local.json` and `*.local.env` files and `secrets/`, all of which are gitignored. The example files
 contain placeholders such as `${FEMTO_SIP_PASSWORD}`. Don't commit packet captures or
 logs either, since they can contain handset identities and credentials.
 
@@ -87,6 +91,8 @@ logs either, since they can contain handset identities and credentials.
 - [x] Packet core up: 1x + EV-DO bearers on air fault-free, PDSN healthy
 - [x] Data attach and browsing confirmed from the handset
 - [x] Mbuni MMS stack built and running on ARM64 (`mms` profile)
+- [x] TLS-stripping proxy running in `fou-nat`'s namespace (end-to-end test passes with simulated handset traffic)
+- [ ] Browse through the TLS-strip proxy from a real handset, and set up Treo mail via `10.55.0.1`
 - [ ] Mobile-terminated SMS delivery to the provisioned subscriber
 - [ ] Send and receive a test MMS end to end
 - [ ] Confirm data uses EV-DO rather than falling back to 1x speeds (to investigate)

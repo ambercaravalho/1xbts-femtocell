@@ -1,0 +1,73 @@
+# Transparent TLS-stripping proxy for handsets (docs/06-tls-strip.md).
+#
+# A compose project of its own, separate from the 1xBTS checkout: every
+# container joins fou-nat's network namespace, so they see fou0 and bind the
+# handset gateway 10.55.0.1 directly. Manage it with scripts/tls-strip.sh,
+# which re-creates the containers whenever fou-nat has been restarted.
+name: 1xbts-tls-strip
+
+x-fou-nat-sidecar: &sidecar
+  network_mode: "container:1xbts-fou-nat"
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  env_file:
+    - path: ../../config/tls-strip.local.env
+      required: false
+  logging:
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web:
+    <<: *sidecar
+    image: mitmproxy/mitmproxy:12.3.1
+    container_name: 1xbts-tls-strip-web
+    user: mitmproxy
+    entrypoint: ["mitmdump"]
+    command:
+      - --mode=transparent
+      - --listen-host=10.55.0.1
+      - --listen-port=8080
+      # Don't dial the original destination on port 80 before the addon has
+      # picked the upstream scheme.
+      - --set=connection_strategy=lazy
+      # No per-request lines: URLs can carry tokens and personal data.
+      - --set=flow_detail=0
+      - --scripts=/addons/strip_addon.py
+    environment:
+      HOME: /home/mitmproxy
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./web/strip_addon.py:/addons/strip_addon.py:ro
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('10.55.0.1', 8080), 2).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+      start_interval: 2s
+
+  mail:
+    <<: *sidecar
+    build: ./mail
+    image: 1xbts-tls-strip-mail:latest
+    container_name: 1xbts-tls-strip-mail
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, NET_BIND_SERVICE]
+
+  rules:
+    <<: *sidecar
+    build: ./rules
+    image: 1xbts-tls-strip-rules:latest
+    container_name: 1xbts-tls-strip-rules
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    stop_grace_period: 10s
+    depends_on:
+      web:
+        condition: service_healthy
+      mail:
+        condition: service_started

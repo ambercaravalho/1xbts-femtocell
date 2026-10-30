@@ -73,6 +73,16 @@ it's missing.
 4. Handset data credentials must match the packet core's auth policy. The defaults
    accept some unverified authentication. That's fine for your own phones, but review it
    before anyone else's device can attach.
+5. **Use Simple IP, not Mobile IP (fixes 1x packet-data churn).** The PDSN ships with a Mobile IP
+   Foreign Agent on (`packet.mobile_ip.enabled: true`), so it advertises with the "registration
+   required" R bit. Real carrier handsets (e.g. the Treo 700w and BlackBerry Bold 9930) then send
+   a MIP `RRQ` with their own MN-HA / MN-AAA SPIs, which don't match this PDSN's SA. Mobile IP
+   never completes, the PDSN falls back to Simple IP, but the handset has already committed and
+   tears the link down - the packet session churns every few seconds. Fix: set
+   **`packet.mobile_ip.enabled = false`** in `pdsn.local.json` so the phones use Simple IP
+   directly. Note the override path - `mobile_ip` is nested under `packet`; a top-level
+   `mobile_ip` key is ignored. This stabilizes the **1x** packet path; it does not get handsets
+   onto EV-DO (see the note in 5.5). See [findings](findings.md) for the full capture.
 
 ## 5.5 Apply and test
 
@@ -89,10 +99,19 @@ browse from the handset.
 If data fails, check in this order: the PDSN address, matching A11 key and SPI on both
 ends, `getcap`, the host routes (`host-route.sh add` after any SeGW recreate), and `fou-nat`.
 
-On this setup both bearers come up fault-free and a handset attaches and browses. One open
-item: confirm traffic actually rides **EV-DO** and is not falling back to 1x speeds (check
-`evdo.enabled`, the DO sector admin/oper state in the ACS readback, the handset's EV-DO
-capability and PRL, and that `term_auth_psk` matches `a12.radius_secret`).
+On this setup both carriers provision fault-free and handsets attach and browse. **1x** packet
+data is confirmed stable on both the Treo 700w and the BlackBerry Bold 9930 once the Mobile IP
+Foreign Agent is disabled (5.4 step 5).
+
+**EV-DO is not working on these handsets.** The DO carrier is on air
+(`sectorElementOperStatus=2`, ch 75, colorCode 58), but the ACS shows `connectionCount=0` on every
+readback and all data rides 1xRTT (`SO 33`; `nOneXDataCall*` counters climb). The handsets never
+*acquire* the DO carrier - 1xbts has no EV-DO/inter-RAT advertisement logic, so acquisition is
+purely handset-side: the phone's data mode must be hybrid/EVDO-enabled (not 1X-only), and its PRL
+must carry an EV-DO acquisition record matching the femto's BC1 ch 75 / serving system (test SID 22
+is unlikely to be associated with EV-DO in a stock PRL). Fixing it means reading/writing the
+handset (QPST/QXDM + MSL/SPC) or matching the femto's SID/NID + DO channel to a system the PRL
+already knows. No pure network-side change forces acquisition. See [findings](findings.md).
 
 ## 5.6 MMS (optional)
 

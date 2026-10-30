@@ -41,11 +41,51 @@ Fix / takeaway:
 | Firmware (2.x / 5.x) | 5.x (device reports `SoftwareVersion 5.0.02.094` in its ACS Inform) | Confirmed |
 | 1xBTS profile that works | `airave-25-5x` (the `2x` profile faults with CPE 9005 on this firmware) | Confirmed |
 | Sector power range | -30 dBm floor; **+6 dBm** accepted fault-free for both 1x and EV-DO (Sprint production value) | Confirmed |
+| Handset data bearer | **1xRTT only** (SO 33) - EV-DO carrier is on air but handsets never acquire it (`connectionCount=0`). 1x data is stable with the PDSN FA disabled (Simple IP) | Confirmed |
 | Bootstrap DNS names queried | `segw.femto.sprint.net` family, cloaked to the VM (proven by IKE reaching the VM end to end) | Confirmed |
 | Cold-start GPS lock time | GPS LED solid green within minutes of power-on; ACS readback reports `GPSGotFix=True`, `TimingGood=True` | Confirmed |
 | Credentials collected (yes/no per field, see docs/03 3.3) | FEID, IKE group key, EAP identity, EAP password, ACS username, ACS password: all yes | Confirmed |
 
 ---
+
+### 2026-10-30: EV-DO still NOT acquired by the handsets (all data is 1x); disabling Mobile IP only stabilized the 1x packet path
+Status: Confirmed
+Context: Both handsets still show "1x" with no speed-up. Checked whether data actually rides EV-DO
+or 1xRTT, after an earlier (wrong) conclusion that disabling Mobile IP had made EV-DO work.
+
+Observed:
+- **All data is 1xRTT, not EV-DO.** The PDSN packet sessions log `(SO 33)` =
+  `SERVICE_OPTION_PACKET_DATA_RC3`, the 1xRTT (RC3) packet-data service option (EV-DO uses no CDMA
+  service option). The femto ACS counters agree: `nOneXDataCallAttempts` climbs 56 -> 100 with
+  `nSuccessfulOneXDataCalls` 53 -> 96 - the phones place **1x** data calls. The "HRPD A10" session
+  naming in `cdma-packet` is just the one byte-stream task 1xbts uses for both bearers; the SO is
+  what reveals the actual air interface.
+- **The EV-DO carrier is up but idle.** The DO (is856) sector reads `sectorElementAdminStatus=2`,
+  `sectorElementOperStatus=2` (on air), ch 75, colorCode 58, tx 6 dBm - yet **`connectionCount=0`
+  on all 61 readbacks** and there is **zero** DO/HRPD air activity (no UATI, no AN session, no A12)
+  in `femto-core`. Neither handset ever even attempts an EV-DO connection.
+- **This is a handset / air-acquisition problem, not a packet-core one.** 1xbts only provisions the
+  DO carrier through the ACS; `cdma-femto` has no inter-RAT / EV-DO-advertisement / neighbor /
+  hybrid logic. Whether a phone moves to EV-DO is driven by the handset's data mode (hybrid vs
+  1X-only) and its PRL's EV-DO acquisition records for BC1 ch 75 / the serving system. Test SID 22
+  is almost certainly not associated with any EV-DO record in a stock Verizon/Sprint PRL, so the
+  phones never scan ch 75 for a DO pilot and stay 1x-only for data.
+- **What the Mobile-IP change actually fixed.** Disabling the PDSN Foreign Agent
+  (`packet.mobile_ip.enabled=false`, nested under `packet`, not top-level) stopped the **1x**
+  packet sessions from churning (MIP4 Agent Advertisement with the R bit -> handset `RRQ` with an
+  MN-HA SPI `0x12c`/300 + MN-AAA SPI `0x2` that don't match the PDSN SA 1234 ->
+  `MN-HA SPI does not select the configured security association; falling back to Simple IP` ->
+  handset `LCP Terminate` -> A11 deregister -> fresh UATI). After the change: zero MIP lines, and
+  1x packet sessions hold and pass bidirectional traffic (`nSuccessfulOneXDataCalls` ~96%). Real
+  improvement for **1x** data stability, but unrelated to EV-DO.
+
+Fix / takeaway: EV-DO is **not working** - keep the earlier "two-way voice + data" note's EV-DO
+item open. Getting these handsets onto the DO carrier is handset-side: (1) confirm each phone's
+data mode is hybrid/EVDO-enabled, not 1X-only; and (2) the likely real blocker - give the phones a
+PRL whose EV-DO acquisition record matches the femto's BC1 ch 75, or reconfigure the femto's
+SID/NID + DO channel to match an EV-DO system the existing PRL already knows. Both need handset
+read/write (QPST/QXDM + MSL/SPC). No pure network-side change can force acquisition. Keep
+`packet.mobile_ip.enabled=false` regardless - it is the right setting for 1x Simple IP.
 
 ### 2026-10-30: Raised 1x and EV-DO sector power to +6 dBm (hardware max); carrier confirmed on air
 Status: Confirmed
@@ -73,6 +113,9 @@ prior value.
 
 ### 2026-10-30: Two-way voice call and handset data attach/browsing confirmed
 Status: Confirmed (voice + data attach), Expected (EV-DO vs 1x throughput to verify)
+Update: 2026-10-30 "EV-DO still NOT acquired ..." above - confirmed the data bearer is 1xRTT
+(SO 33), not EV-DO. Disabling the Mobile IP FA stabilized the 1x path; EV-DO remains unacquired
+(a handset PRL/mode issue). The EV-DO item here stays open.
 Context: Physical handset tests after the packet core and MMS stack were stood up.
 
 Observed:

@@ -20,7 +20,11 @@ rows.
 | HLR lookups fail / PDSN "MEID-to-IMSI disabled" | Core start order | HLR must be up before PDSN: `stop-core.sh && start-core.sh` |
 | Call connects, no audio | Voice bearer | Rerun `sudo docker/femto/host-route.sh add` (after any SeGW recreate). Does `voice_bearer_bind_ip` equal the femto Docker network host IP (not loopback)? |
 | Data fails | Packet core | A11 key and SPI match on both ends, `getcap target/release/cdma-nib`, host routes, `fou-nat` container running, `a10_bearer` nulls present (docs/05) |
+| Re-provision faults `BatchTableOneXPcfPdsn: 9002` | A11 key | The A11 `SecurityKey` is write-once on the device; set `a11_security.shared_secret_hex` to the key it already holds, don't mint a new one (docs/05 5.2) |
+| `configure-do` faults `is856SectorElement.sectorId: 9002` | EV-DO | Set `evdo.sector_id` to the device readback **including its `0x` prefix** so it drops out of the drift set (docs/05 5.4) |
 | EV-DO auth fails | A12 | `term_auth_psk` (femto) equals `a12.radius_secret` (PDSN); re-sync the femtocell |
+| Data works but only at 1x speeds | EV-DO | `evdo.enabled`, the DO sector admin/oper state in the ACS readback, the handset's EV-DO capability and PRL, and `term_auth_psk` matching `a12.radius_secret` |
+| MMS fails / `edge-resolver` logs unknown-service / `UNIMPLEMENTED` | MMS | `mms` profile up; point `MGMT_GRPC_ADDR` at the MSC management endpoint (`host.docker.internal:17017`); MMSC reachable at `mmsc.local.1xbts.org` via `fou-nat` DNS (docs/05 5.6) |
 | Everything drops overnight | Mac host | Mac slept (`pmset -g`). Did the VM stop or the Mac reboot? |
 
 ## Useful commands (in the VM, from `~/1xbts`)

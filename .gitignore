@@ -23,6 +23,9 @@ logs/
 *.log
 run/
 
+# Third-party tool clones (re-clone on demand; see docs/03)
+Sprint-Airave-Airvana-2.5-Root/
+
 # OS / editor
 .DS_Store
 .vscode/

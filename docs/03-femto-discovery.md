@@ -30,13 +30,17 @@ Pick the 1xBTS profile:
 | Device | Profile | Notes |
 | --- | --- | --- |
 | Airave 2.5, 2.x firmware | `airave-25-2x` | |
-| Airave 2.5, 5.x firmware | `airave-25-5x` | Provisioning also pushes A11 key/SPI and the term-auth PSK |
+| Airave 2.5, 5.x firmware | `airave-25-5x` | **Confirmed working on this unit.** Provisioning also pushes A11 key/SPI and the term-auth PSK |
 | Airave 2.5+ | `airave-25plus` | Service is BC1 / 1900 MHz PCS only. The 800 MHz radios are only discovery beacons |
 | Anything else | `standard-xs0059` | Generic starting point. Not covered by the Airave support claims |
 
-The FEID in the official example (`0005B9AABBCC`) starts with `0005B9`, which looks like
-a MAC OUI. **Check** whether your device's FEID equals its Ethernet MAC without separators,
-and record the answer in findings.
+The unit in this setup is an **Airvana FC330A running firmware 5.x**, so it uses
+`airave-25-5x` (the `2x` profile faults with CPE 9005 on this firmware; see
+[findings](findings.md)). The example config defaults to `airave-25-5x` for that reason.
+
+The FEID in the official example (`0005B9AABBCC`) starts with `0005B9`, the Airvana MAC
+OUI. On this unit the **FEID equals the Ethernet MAC without separators** (confirmed via the
+SeGW identity probe). Check your own device and record the answer in findings.
 
 ## 3.2 Identify the firmware (2.x vs 5.x)
 
@@ -59,8 +63,10 @@ least to most invasive:
    ACS reports its software version. If the tunnel only comes up with one of the two
    profiles, that is your answer.
 
-If you can't tell, start with `airave-25-2x`. Switch to `airave-25-5x` if the tunnel comes
-up but provisioning misbehaves. Record which one worked.
+On this unit the ACS Inform reported `SoftwareVersion 5.0.02.094`, so `airave-25-5x` is the
+right profile. If you can't tell up front, the tell-tale is provisioning: under the wrong
+profile the ACS session ends with `CPE Fault 9005 Invalid Parametername` and the device keeps
+re-informing as `0 BOOTSTRAP`. Switch profiles and record which one finalized provisioning.
 
 ## 3.3 Credentials checklist
 
@@ -91,6 +97,11 @@ That confirms the FEID without opening the device.
 
 Copy this table into findings with the "Have it?" column filled in, but never the values.
 
+On this unit all of these were collected: FEID, IKE group key, EAP identity, EAP password,
+ACS username, ACS password, SIP password, and the EV-DO term-auth PSK. The six tunnel/ACS
+secrets were recovered via the radio-module root path in 3.3.2; SIP registered with the value
+already present and no separate recovery was needed.
+
 ### 3.3.1 Identity probe (confirms FEID without credentials)
 
 With DNS cloaking working (step 2), run only the SeGW with **placeholder** secrets and your
@@ -98,7 +109,7 @@ guessed FEID. The device reveals its identity before authentication fails:
 
 ```bash
 cd ~/1xbts
-# femto.local.json: set feid to the MAC without separators, profile airave-25-2x,
+# femto.local.json: set feid to the MAC without separators, profile airave-25-5x,
 # security_profile legacy, and any non-empty placeholder ike_group_key / eap_password.
 docker compose --profile femto-segw-only up -d
 docker compose logs -f femto-segw | grep -E 'IKE_SA_INIT|IDi|peer config|EAP|informational'
@@ -115,9 +126,10 @@ Read the result:
 | `received unencrypted informational ... NOTIFY` right after our `AUTH` | the device rejected our PSK, so **`ike_group_key` is wrong** |
 | `EAP method EAP_MD5 succeeded` | group key right, EAP password right |
 
-On this unit the probe confirmed FEID = MAC, validated the global IKE group key, and
-stopped at the per-device EAP-MD5 password (see findings). Leave the radio disabled for
-this test; the SeGW never sends configuration to the device.
+On this unit the probe confirmed FEID = MAC and validated the global IKE group key; the
+per-device EAP-MD5 password was the last blocker and was later recovered (see 3.3.2 and
+findings), after which `EAP method EAP_MD5 succeeded` and the tunnel came up. Leave the
+radio disabled for this test; the SeGW never sends configuration to the device.
 
 ### 3.3.2 Where the Airave 2.5 (FC330A) credentials come from
 
@@ -131,15 +143,19 @@ documents how the secrets are stored and recovered.
 | --- | --- | --- | --- |
 | IKE group key | `segw.ike_group_key` | **global** Airave 2.5 constant | from the writeup; validated by the probe advancing to EAP |
 | EAP-MD5 password | `segw.eap_password` | **per-device** | read from the radio module's U-boot env / VPD (requires a shell or flash dump) |
-| ACS password | `acs.password` | shared constant | from the writeup |
-| ACS/operator username | `acs.username` | derived | `<OUI>-cdmaFAP-<MAC-without-colons>` |
-| SIP password | `sip.password` | unknown | not in the recovered set; TBD |
+| ACS password | `acs.password` | shared constant | recovered from the radio module (also in the writeup) |
+| ACS/operator username | `acs.username` | derived | `<OUI>-cdmaFAP-<MAC-without-colons>` (confirmed) |
+| SIP password | `sip.password` | per-device | already present on the unit; SIP registered without a separate recovery |
 
-Non-invasive reads that **don't** work on a stock unit: telnet/SSH are closed on the
-customer LAN unless `DEBUG_MODE=y` is set in the radio's U-boot env, and the host web UI
-(`admin`/`admin`) only shows the router, not the radio's keys. Getting the per-device EAP
-password therefore means opening the unit and either attaching a 3.3V UART to get a shell or
-dumping the flash to read the U-boot env, as the writeup did.
+**Recovering the per-device EAP password without opening the case.** telnet/SSH are closed on
+the customer LAN unless `DEBUG_MODE=y` is set in the radio's U-boot env, and the host web UI
+(`admin`/`admin`) only exposes the router, not the radio's keys. On this unit the public root
+toolkit [dondaplayer1/Sprint-Airave-Airvana-2.5-Root](https://github.com/dondaplayer1/Sprint-Airave-Airvana-2.5-Root)
+(`2-5/airave-provision.py`) opened a runtime shell on the radio module via a `/setup.cgi`
+diagnostics ping command-injection on the host router, then read the six fields from the
+radio's environment. The unlock is **runtime only** and is lost on power cycle, so rerun the
+script after a reboot. Clone it on demand (it is gitignored here); a UART console or flash
+dump, as the writeup did, is the fallback if the injection path is patched on your firmware.
 
 ## 3.4 Radio-side facts to collect
 

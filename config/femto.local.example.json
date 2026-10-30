@@ -3,7 +3,7 @@
   "sites": {
     "home": {
       "feid": "${FEMTO_FEID}",
-      "profile": "airave-25-2x",
+      "profile": "airave-25-5x",
       "name": "Home femtocell",
       "cell": {
         "mcc": "310",

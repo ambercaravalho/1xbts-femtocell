@@ -8,7 +8,7 @@ Linux host and LAN, and these docs fill in the parts specific to this setup:
 - **Host:** Mac mini M4 (Apple Silicon) running VirtualBox
 - **Guest:** Ubuntu Server 24.04 **ARM64** VM, bridged onto the LAN
 - **Router:** OPNsense, with **dnscrypt-proxy** answering DNS for LAN clients
-- **Radio:** Sprint Airave femtocell (model and firmware still to be identified)
+- **Radio:** Sprint Airave 2.5 femtocell (Airvana FC330A, firmware 5.x, 1xBTS profile `airave-25-5x`)
 
 ## Topology
 
@@ -38,7 +38,7 @@ Follow these in order:
 2. [OPNsense DNS](docs/02-opnsense-dns.md): dnscrypt-proxy cloaking, static lease, DNS redirect
 3. [Femtocell discovery](docs/03-femto-discovery.md): identify model and firmware, pick a profile, gather credentials
 4. [1xBTS bring-up](docs/04-1xbts-bringup.md): build, start the femto stack and core, check the dashboard
-5. [Packet data](docs/05-packet-data.md): PDSN A11/A12, capabilities, EV-DO
+5. [Packet data](docs/05-packet-data.md): PDSN A11/A12, capabilities, EV-DO, and the MMS stack
 
 Also see:
 
@@ -80,6 +80,13 @@ logs either, since they can contain handset identities and credentials.
 - [x] 1xBTS femto profile and `cdma-nib` build on ARM64
 - [x] IPsec tunnel up
 - [x] ACS provisioned, SIP registered
-- [x] GPS lock, radio enabled (sector admin-unlocked; carrier goes on air once GPS timing settles)
-- [ ] First handset registration, call, SMS
-- [ ] Packet data
+- [x] GPS lock, timing synchronized, 1x carrier on air (sector power -10 dBm)
+- [x] Handset registered on air; 1xBTS welcome SMS delivered
+- [x] Subscriber provisioned in the HLR (Palm Treo 700w)
+- [x] Two-way voice call placed
+- [x] Packet core up: 1x + EV-DO bearers on air fault-free, PDSN healthy
+- [x] Data attach and browsing confirmed from the handset
+- [x] Mbuni MMS stack built and running on ARM64 (`mms` profile)
+- [ ] Mobile-terminated SMS delivery to the provisioned subscriber
+- [ ] Send and receive a test MMS end to end
+- [ ] Confirm data uses EV-DO rather than falling back to 1x speeds (to investigate)

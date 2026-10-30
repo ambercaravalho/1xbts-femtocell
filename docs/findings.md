@@ -38,16 +38,29 @@ Fix / takeaway:
 | EAP-MD5 password | per-device, recovered from radio U-boot env via root | Confirmed |
 | Radio root access | radio SSH/telnet relay via host `/setup.cgi` ping injection; `su` password `root` | Confirmed |
 | ACS username format | `<OUI>-cdmaFAP-<MAC>` (`0005B9-cdmaFAP-0005B9xxxxxx`) | Confirmed |
-| FCC ID | | |
 | Firmware (2.x / 5.x) | 5.x (device reports `SoftwareVersion 5.0.02.094` in its ACS Inform) | Confirmed |
 | 1xBTS profile that works | `airave-25-5x` (the `2x` profile faults with CPE 9005 on this firmware) | Confirmed |
-| FEID equals Ethernet MAC? | | |
-| Bootstrap DNS names actually queried | | |
-| Other hosts it tries to reach (from OPNsense block log) | | |
+| Bootstrap DNS names queried | `segw.femto.sprint.net` family, cloaked to the VM (proven by IKE reaching the VM end to end) | Confirmed |
 | Cold-start GPS lock time | GPS LED solid green within minutes of power-on; ACS readback reports `GPSGotFix=True`, `TimingGood=True` | Confirmed |
 | Credentials collected (yes/no per field, see docs/03 3.3) | FEID, IKE group key, EAP identity, EAP password, ACS username, ACS password: all yes | Confirmed |
 
 ---
+
+### 2026-10-30: Two-way voice call and handset data attach/browsing confirmed
+Status: Confirmed (voice + data attach), Expected (EV-DO vs 1x throughput to verify)
+Context: Physical handset tests after the packet core and MMS stack were stood up.
+
+Observed:
+- **Two-way voice call completed** over the femto 1x carrier.
+- **Handset attached for packet data and browsed** the internet through the PDSN / `fou-nat`
+  path.
+- Throughput looked like **1x rather than EV-DO**; which bearer actually carried the session
+  is not yet confirmed.
+
+Fix / takeaway: Voice and data both work end to end on real hardware. Remaining: confirm the
+data session is on EV-DO and not falling back to 1x (check `evdo.enabled`, the DO sector
+admin/oper state in the ACS readback, the handset's EV-DO capability and PRL, and that
+`term_auth_psk` matches `a12.radius_secret`); MT SMS delivery; and a round-trip MMS test.
 
 ### 2026-10-30: Enabled packet data (1x + EV-DO) and stood up the MMS stack
 Status: Confirmed (infrastructure); handset attach/send is the remaining physical test
@@ -176,6 +189,8 @@ QPST reads are not required just to attach.
 
 ### 2026-10-29: Radio "Off" diagnosed - carrier never observed on air; the readback samples post-unlock; LocationCheckStatus UNKNOWN
 Status: Confirmed (diagnosis), Expected (a handset is the real on-air test)
+Superseded by: 2026-10-29 "Carrier confirmed ON AIR" below - the carrier is radiating; the
+`OneXSectorOperState=1` "Off" readback was only the post-unlock sampling artifact.
 Context: Determining why `radioOperationalState` stays Off now that the core is up and the
 sector is admin-unlocked, as the gate before connecting a Treo 700w. Read live over SSH to the
 VM and the dashboard API; nothing was changed.
@@ -218,6 +233,8 @@ not enforced - a subscriber with no A-key will register.
 
 ### 2026-10-29: CDMA core up, base station attached, radio administratively enabled
 Status: Confirmed (core + admin-unlock), Expected (carrier on air after timing warm-up)
+Superseded by: 2026-10-29 "Carrier confirmed ON AIR" below - the carrier went on air once GPS
+timing settled.
 Context: Brought up the shared `cdma-nib` core and enabled the 1x radio so a handset can be
 connected. Voice/SMS scope; packet data deferred.
 

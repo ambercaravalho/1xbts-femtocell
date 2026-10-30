@@ -156,4 +156,9 @@ button only *requests* the change. Wait until the reported radio state confirms 
 4. Test a call between two handsets on the cell, then an SMS. Calls to outside numbers need
    a SIP trunk (see the 1xBTS Voice Gateway guide).
 
-Record what worked in [findings](findings.md). Next: [packet data](05-packet-data.md).
+This femto path uses **open registration with no CAVE auth**, so a compatible handset
+registers on its native programming even with no HLR subscriber, and 1xBTS auto-sends a
+welcome SMS on a mobile's first attach. Adding a subscriber (IMSI + ESN/MEID) still matters
+for a stable MDN and for mobile-terminated SMS/calls to resolve. On this setup a Treo 700w
+registered, received the welcome SMS, and completed a two-way call. Record what worked in
+[findings](findings.md). Next: [packet data](05-packet-data.md).

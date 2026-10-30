@@ -33,6 +33,11 @@ placeholder. Things to know:
   `voice_bearer_bind_ip`.
 - With `airave-25-5x`, provisioning pushes the A11 key and SPI to the femtocell. With
   `airave-25-2x`, check whether it does and record the answer in findings.
+- **The A11 `SecurityKey` is effectively write-once.** Once the device has stored a key,
+  re-provisioning with a *different* value faults `BatchTableOneXPcfPdsn: 9002 Internal Error`.
+  The shared secret only has to **match** on both ends, so point `a11_security.shared_secret_hex`
+  at the key the device already trusts rather than minting a fresh one. Only generate a new key
+  (5.1) for a device that has never stored one, or expect to re-sync after a factory reset.
 - If you define `a11_peers`, each one needs its own SPI. Select the femtocell's SPI with
   `packet.a11_spi` in `femto.local.json`.
 
@@ -55,10 +60,16 @@ it's missing.
 
 1. Fill in the site's `evdo` block (band, channel, sector ID, color code) and set
    `enabled: true`.
-2. For `airave-25-5x`: set top-level `term_auth_psk` in `femto.local.json` **equal to**
+2. **Match `evdo.sector_id` to the device's readback, including its `0x` prefix.** The Airave
+   returns the 128-bit sector ID as `0x...`; a bare-hex value drifts against it, so the ACS
+   keeps trying to `SET` a value the firmware rejects with `is856SectorElement.sectorId: 9002`
+   (this unit's generic "RF value out of range / not accepted"). Set `sector_id` to exactly the
+   `0x`-prefixed readback and it drops out of the drift set, no `SET` is attempted, and
+   `configure-do` applies the rest cleanly.
+3. For `airave-25-5x`: set top-level `term_auth_psk` in `femto.local.json` **equal to**
    `a12.radius_secret` in `pdsn.local.json`. Provisioning sends it to the device. Don't
    leave the PDSN secret empty while the device still holds a different one.
-3. Handset data credentials must match the packet core's auth policy. The defaults
+4. Handset data credentials must match the packet core's auth policy. The defaults
    accept some unverified authentication. That's fine for your own phones, but review it
    before anyone else's device can attach.
 
@@ -76,3 +87,29 @@ browse from the handset.
 
 If data fails, check in this order: the PDSN address, matching A11 key and SPI on both
 ends, `getcap`, the host routes (`host-route.sh add` after any SeGW recreate), and `fou-nat`.
+
+On this setup both bearers come up fault-free and a handset attaches and browses. One open
+item: confirm traffic actually rides **EV-DO** and is not falling back to 1x speeds (check
+`evdo.enabled`, the DO sector admin/oper state in the ACS readback, the handset's EV-DO
+capability and PRL, and that `term_auth_psk` matches `a12.radius_secret`).
+
+## 5.6 MMS (optional)
+
+MMS runs from a separate Compose profile in the 1xBTS checkout and does not need the SDR.
+
+```bash
+cd ~/1xbts
+docker compose build mbuni                 # Mbuni 1.6.0 + Kannel 1.4.5, builds on arm64
+docker compose --profile mms up -d         # MMSC + in-tree smsc-bridge (Kannel bearerbox)
+```
+
+The MMSC is reachable from mobiles at `http://mmsc.local.1xbts.org/` via the `fou-nat`
+captive DNS; the WAP gateway is `10.55.0.1:9200/9201`. On the handset, set the MMSC URL and
+WAP gateway to those values.
+
+The `fou-nat` `edge-resolver` sidecar maps a data-plane IP to the subscriber's MSISDN. On the
+femtocell path there is no BSC, so point it at the MSC's management endpoint
+(`MGMT_GRPC_ADDR=host.docker.internal:17017`), which serves the equivalent lookup. See
+[findings](findings.md) for the upstream `cdma-msc` change that exposes
+`pdsn_management.v1.PdsnManagementService` there; that patch lives in the `chrismoos/1xbts`
+checkout, not this repo.

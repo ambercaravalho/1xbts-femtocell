@@ -1,7 +1,7 @@
 # 2. OPNsense DNS (dnscrypt-proxy)
 
 Goal: when the femtocell looks up its security gateway (`segw*.femto.sprint.net`),
-OPNsense answers with the VM's LAN address (`192.168.1.50` in these examples). This must
+OPNsense answers with the VM's LAN address (`192.168.1.102` in these examples). This must
 work **before** the tunnel exists, so it has to happen on the LAN resolver, not inside
 1xBTS.
 
@@ -35,7 +35,7 @@ cloaking rules. Add one override:
 
 | Name / pattern | Destination |
 | --- | --- |
-| `femto.sprint.net` | `192.168.1.50` |
+| `femto.sprint.net` | `192.168.1.102` |
 
 In dnscrypt-proxy, a bare domain pattern matches the domain **and every subdomain**, so
 `segw.femto.sprint.net`, `segw01.femto.sprint.net`, and backup names are all covered.
@@ -62,7 +62,7 @@ hardcode public resolvers, so add a redirect as a safety net.
 This setup already has a **network-wide** redirect that sends every LAN client's port-53
 traffic to OPNsense, so nothing femtocell-specific is needed. Confirmed from the VM:
 `dig @8.8.8.8`, `@1.1.1.1`, and `@9.9.9.9` (UDP and TCP) for `segw.femto.sprint.net` all
-return `192.168.1.50`. If you don't have one, add a rule scoped to the femtocell:
+return `192.168.1.102`. If you don't have one, add a rule scoped to the femtocell:
 
 **Firewall > NAT > Port Forward > Add:**
 
@@ -102,9 +102,9 @@ doesn't pass through OPNsense, so these rules only affect traffic leaving the LA
 From the VM, or any LAN client that uses OPNsense for DNS:
 
 ```bash
-dig @192.168.1.1 segw.femto.sprint.net +short        # -> 192.168.1.50
-dig @192.168.1.1 segw-backup.femto.sprint.net +short # -> 192.168.1.50 (any label works)
-dig @192.168.1.1 femto.sprint.net +short             # -> 192.168.1.50
+dig @192.168.1.1 segw.femto.sprint.net +short        # -> 192.168.1.102
+dig @192.168.1.1 segw-backup.femto.sprint.net +short # -> 192.168.1.102 (any label works)
+dig @192.168.1.1 femto.sprint.net +short             # -> 192.168.1.102
 dig @192.168.1.1 example.com +short                  # normal answer, so upstream still works
 ```
 
@@ -113,7 +113,7 @@ means any host. With a femtocell-only rule, the test host has to be added to
 `sprint_femtocell` temporarily:
 
 ```bash
-dig @8.8.8.8 segw.femto.sprint.net +short            # -> 192.168.1.50 if the redirect works
+dig @8.8.8.8 segw.femto.sprint.net +short            # -> 192.168.1.102 if the redirect works
 dig +tcp @8.8.8.8 segw.femto.sprint.net +short       # same over TCP
 ```
 

@@ -6,7 +6,7 @@
 # Override any of these via env:
 VM_NAME="${VM_NAME:-1xbts}"
 VM_USER="${VM_USER:-bts}"
-VM_IP="${VM_IP:-192.168.1.50}"
+VM_IP="${VM_IP:-192.168.1.102}"
 VM_PREFIX="${VM_PREFIX:-24}"
 VM_GATEWAY="${VM_GATEWAY:-192.168.1.1}"
 VM_DNS="${VM_DNS:-192.168.1.1}"

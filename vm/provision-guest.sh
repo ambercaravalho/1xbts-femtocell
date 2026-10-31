@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Provision the 1xbts guest (docs/01-vm-setup.md steps 1.4-1.7). Run inside the VM as the
 # sudo-capable user; safe to re-run.
-#   ssh bts@192.168.1.50 'bash -s' < vm/provision-guest.sh
+#   ssh bts@192.168.1.102 'bash -s' < vm/provision-guest.sh
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 

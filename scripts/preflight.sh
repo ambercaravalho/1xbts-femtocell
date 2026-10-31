@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Read-only checks for the 1xBTS femtocell VM. Changes nothing.
 #
-# Usage: VM_IP=192.168.1.50 DNS_SERVER=192.168.1.1 scripts/preflight.sh
+# Usage: VM_IP=192.168.1.102 DNS_SERVER=192.168.1.1 scripts/preflight.sh
 #   ONEXBTS_DIR   1xBTS checkout (default: ~/1xbts)
-#   VM_IP         address the femtocell should reach the SeGW on (default: 192.168.1.50)
+#   VM_IP         address the femtocell should reach the SeGW on (default: 192.168.1.102)
 #   DNS_SERVER    LAN resolver the femtocell uses, i.e. OPNsense (default: default gateway)
 set -uo pipefail
 
 ONEXBTS_DIR="${ONEXBTS_DIR:-$HOME/1xbts}"
-VM_IP="${VM_IP:-192.168.1.50}"
+VM_IP="${VM_IP:-192.168.1.102}"
 DNS_SERVER="${DNS_SERVER:-$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')}"
 
 fails=0

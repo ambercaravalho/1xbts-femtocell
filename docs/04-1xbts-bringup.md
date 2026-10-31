@@ -134,7 +134,7 @@ problem is DNS or the network, not 1xBTS. Go back to
 
 ## 4.6 Dashboard
 
-Open `http://192.168.1.50:3000` from a LAN machine. Select the femtocell and check, in
+Open `http://192.168.1.102:3000` from a LAN machine. Select the femtocell and check, in
 order:
 
 1. **ACS: Provisioned**

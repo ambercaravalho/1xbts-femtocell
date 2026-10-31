@@ -3,10 +3,10 @@
 #
 # In dnscrypt-proxy, a bare domain pattern matches the domain and all of its
 # subdomains, so this one line covers segw*.femto.sprint.net and any backup
-# gateway names. Replace 192.168.1.50 with your VM's LAN address.
+# gateway names. Replace 192.168.1.102 with your VM's LAN address.
 #
 # Don't cloak spcsdns.net names (fsmhdm.femto.spcsdns.net,
 # fap.airave2.ims.spcsdns.net) here. The 1xBTS stack answers those inside
 # the tunnel.
 
-femto.sprint.net        192.168.1.50
+femto.sprint.net        192.168.1.102

@@ -73,7 +73,7 @@ logs either, since they can contain handset identities and credentials.
 
 ## Status
 
-- [x] VM built and bridged (`1xbts`, 192.168.1.50, provisioned)
+- [x] VM built and bridged (`1xbts`, 192.168.1.102, provisioned)
 - [x] DNS cloaking verified on the LAN (OPNsense dnscrypt-proxy Overrides)
 - [x] Femtocell static lease (192.168.1.201) and network-wide DNS redirect
 - [x] Femtocell seen sending IKE to the VM (IKEv2, ~4.5 min after power-on)

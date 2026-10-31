@@ -9,7 +9,7 @@ Examples in this repo use these addresses. Substitute your own everywhere:
 | --- | --- |
 | LAN subnet | `192.168.1.0/24` |
 | OPNsense (gateway + DNS) | `192.168.1.1` |
-| VM (1xBTS host / SeGW) | `192.168.1.50` |
+| VM (1xBTS host / SeGW) | `192.168.1.102` |
 | Femtocell | `192.168.1.201` (OPNsense alias `sprint_femtocell`) |
 
 ## Automated path (what this setup actually used)
@@ -20,10 +20,10 @@ Run everything from a workstation on the LAN. No installer, no VirtualBox GUI:
 cp .env.example .env              # fill in the Mac mini's SSH host/user/password
 brew install sshpass
 vm/create-vm.sh                   # cloud image + cloud-init seed -> VM "1xbts" running headless
-ssh bts@192.168.1.50 'bash -s' < vm/provision-guest.sh    # packages, Docker, Rust, fou/ipip
+ssh bts@192.168.1.102 'bash -s' < vm/provision-guest.sh    # packages, Docker, Rust, fou/ipip
 scripts/remote.sh 'VBoxManage storageattach 1xbts --storagectl VirtioSCSI --port 1 --device 0 --type dvddrive --medium emptydrive --forceunmount'
-rsync -a --exclude .env --exclude secrets/ --exclude .git/ ./ bts@192.168.1.50:1xbts-femtocell/
-ssh bts@192.168.1.50 1xbts-femtocell/scripts/preflight.sh
+rsync -a --exclude .env --exclude secrets/ --exclude .git/ ./ bts@192.168.1.102:1xbts-femtocell/
+ssh bts@192.168.1.102 1xbts-femtocell/scripts/preflight.sh
 ```
 
 - [`scripts/remote.sh`](../scripts/remote.sh) runs commands on the Mac mini using `.env`
@@ -118,7 +118,7 @@ network:
   ethernets:
     enp0s8:
       dhcp4: false
-      addresses: [192.168.1.50/24]
+      addresses: [192.168.1.102/24]
       routes:
         - to: default
           via: 192.168.1.1
@@ -132,7 +132,7 @@ sudo netplan apply
 ip -br addr
 ```
 
-Make sure `192.168.1.50` is outside the DHCP pool.
+Make sure `192.168.1.102` is outside the DHCP pool.
 
 ## 1.4 Base packages and time
 
